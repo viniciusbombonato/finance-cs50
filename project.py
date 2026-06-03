@@ -1,13 +1,13 @@
-from altair as alt
-import requests
+import altair as alt
 import streamlit as st
 import yfinance as yf
 
-
+tickers = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
+data = yf.download(tickers)
 
 
 def mouseover():
-    return hover = alt.selection_single(
+    hover = alt.selection_single(
     fields=["date"],
     nearest=True,
     on="mouseover",
@@ -16,26 +16,25 @@ def mouseover():
 
 def line_chart():
     lines = (
-        alt.Chart(stock_data, title="Evolution of stock prices")
+        alt.Chart(data, title="Evolution of Cryptocurrency prices")
         .mark_line()
         .encode(
-            x="date",
-            y="price",
-            color="symbol",
+            x="Date",
+            y="Price",
+            color="Symbol",
         )
     )
 
 def crypto_infos():
-    data = yf.Tickerts("BTC-USD", "ETH-USD", "ADA-USD").history(period="12mo")
+    tickers = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
+    try:
+        data = yf.download(tickers)
+    except Exception as e:
+        st.error(f"An error occurred while fetching cryptocurrency data: {e}", icon="🚨")
+        return
+
     cryptocurrencies = []
 
-    try:
-        response = requests.get(url, params=payload, headers=headers)
-        content = response.json()
-    except requests.exceptions.RequestException as e:
-        raise requests.HTTPError(f"An error occurred: {e}")
-    
-    data = content['data'].get('quote', [])
     for key, value in data.items():
         
 
