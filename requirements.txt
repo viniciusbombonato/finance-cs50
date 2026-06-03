@@ -1,2 +1,5 @@
+altair
+pandas
 streamlit
 requests
+yfinance
