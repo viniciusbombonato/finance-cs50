@@ -4,7 +4,7 @@ import yfinance as yf
 
 tickers = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
 
-Class CryptoData:
+class CryptoData:
     def __init__(self, tickers):
         self.tickers = tickers
         self.data = None
@@ -16,10 +16,13 @@ Class CryptoData:
             st.error(f"An error occurred while fetching cryptocurrency data: {e}", icon="🚨")
             self.data = None
 
+    def process_data(self):
+        
+
 
 def make_chart(crypto_data):
 
-    hover = alt.selection_point(
+    hover = alt.selection_single(
     fields=["date"],
     nearest=True,
     on="mouseover",
@@ -51,7 +54,7 @@ def make_chart(crypto_data):
                 alt.Tooltip("price", title="Price (USD)"),
             ],
         )
-        .add_params(hover)
+        .add_selection(hover)
     )
 
     data_layer = lines + points + tooltips
@@ -60,6 +63,7 @@ def make_chart(crypto_data):
 
 
 def main():
+    crypto_data = CryptoData(tickers)
 
     crypto_chart = make_chart(crypto_data)
 
