@@ -3,20 +3,31 @@ import streamlit as st
 import yfinance as yf
 
 tickers = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
-data = yf.download(tickers)
+
+Class CryptoData:
+    def __init__(self, tickers):
+        self.tickers = tickers
+        self.data = None
+
+    def fetch_data(self):
+        try:
+            self.data = yf.download(self.tickers)
+        except Exception as e:
+            st.error(f"An error occurred while fetching cryptocurrency data: {e}", icon="🚨")
+            self.data = None
 
 
-def mouseover():
-    hover = alt.selection_single(
+def make_chart(crypto_data):
+
+    hover = alt.selection_point(
     fields=["date"],
     nearest=True,
     on="mouseover",
     empty="none",
 )
-
-def line_chart():
+    
     lines = (
-        alt.Chart(data, title="Evolution of Cryptocurrency prices")
+        alt.Chart(crypto_data.data, title="Evolution of Cryptocurrency prices")
         .mark_line()
         .encode(
             x="Date",
@@ -25,29 +36,33 @@ def line_chart():
         )
     )
 
-def crypto_infos():
-    tickers = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
-    try:
-        data = yf.download(tickers)
-    except Exception as e:
-        st.error(f"An error occurred while fetching cryptocurrency data: {e}", icon="🚨")
-        return
 
-    cryptocurrencies = []
+    points = lines.transform_filter(hover).mark_circle(size=65)
 
-    for key, value in data.items():
-        
+    tooltips = (
+        alt.Chart(crypto_data.data)
+        .mark_rule()
+        .encode(
+            x="yearmonthdate(date)",
+            y="price",
+            opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
+            tooltip=[
+                alt.Tooltip("date", title="Date"),
+                alt.Tooltip("price", title="Price (USD)"),
+            ],
+        )
+        .add_params(hover)
+    )
 
-
-    for item in content['data']:
-        yield quote = item.get('quote', [])
-        yield price = quote[0].get('price') if quote else None
-        yield price = round(price, 2) if price is not None
-        yield print(f"{item['name']}: {price}")   
+    data_layer = lines + points + tooltips
+    
+    st.altair_chart(data_layer, use_container_width=True)
 
 
 def main():
-    
+
+    crypto_chart = make_chart(crypto_data)
+
 
 if __name__ == "__main__":
     main()
