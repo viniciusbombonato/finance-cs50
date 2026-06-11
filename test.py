@@ -9,6 +9,6 @@ def get_data():
     source = source[source.date.gt("2004-01-01")]
     return source
 
-stock_data = get_data().reset_index()
+stock_data = get_data()
 
 print(stock_data)
