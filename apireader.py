@@ -21,7 +21,11 @@ class CryptoData:
     def process_data(self):
         if self.data is not None:
             try:
-                self.data = self.data.melt(var_name="Symbol", value_name="Price", ignore_index=False).reset_index()
+                df_close = self.data.xs("Close", level=1, axis=1)
+                self.data = df_close.melt(var_name="Symbol", value_name="Price", ignore_index=False).reset_index()
+                self.data["Date"] = pd.to_datetime(self.data["Date"])
+                self.data["Price"] = self.data["Price"].round(2)
+                
             except Exception as e:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
 
