@@ -1,12 +1,18 @@
 import altair as alt
 import pandas as pd
 import requests
+import newsapi
 import streamlit as st
 import yfinance as yf
 
-cryptocoins = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
+cryptocoins = ["ETH-USD", "BNB-USD", "SOL-USD"]
 companies = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
+st.set_page_config(
+    page_title="Finance Dashboard",
+    page_icon="💹",
+    layout="wide",
+)
 
 class Finance_data:
     def __init__(self, tickers):
@@ -74,10 +80,11 @@ def make_chart(data, title="Evolution of prices"):
         .add_selection(hover)
     )
 
-    data_layer = (lines + points + tooltips).resolve_scale(y="independent")
+    data_layer = (lines + points + tooltips).resolve_scale(y="shared")
     st.altair_chart(data_layer, use_container_width=True)
 
 def what_new():
+    st.markdown("## Latest News", text_alignment="center")
     try:
         response = requests.get(
             "https://newsapi.org/v2/top-headlines?country=us&apiKey=3a1bc10b310d450da381e508babd0df7"
@@ -87,16 +94,33 @@ def what_new():
             return
 
         response = response.json()
+        articles = response.get("articles", [])
 
     except Exception as e:
         st.error(f"An error occurred while fetching news data: {e}", icon="🚨")
         return
 
-    for article in response['articles']:
-        yield st.markdown("## " + article['title'])
-        if article['urlToImage']:
-            yield st.image(image=article['urlToImage'])
-        yield st.write(article['description'])
+    if not articles:
+        st.info("No news articles available right now.")
+        return
+
+    col1, col2 = st.columns(spec=2, gap="large")
+
+    for index, article in enumerate(articles):
+        if index % 2 == 0:
+            with col1:
+                st.markdown("### " + article.get("title", "Untitled"))
+                image_url = article.get("urlToImage")
+                if image_url:
+                    st.image(image=image_url, width="stretch")
+                st.write(article.get("description", "No description available."))
+        else:
+            with col2:
+                st.markdown("### " + article.get("title", "Untitled"))
+                image_url = article.get("urlToImage")
+                if image_url:
+                    st.image(image=image_url, width="stretch")
+                st.write(article.get("description", "No description available."))
 
 
 def main():
