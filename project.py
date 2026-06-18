@@ -1,11 +1,14 @@
 import altair as alt
 import pandas as pd
+import requests
 import streamlit as st
 import yfinance as yf
 
-tickers = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
+cryptocoins = ["BTC-USD", "ETH-USD", "BNB-USD", "RP-USD", "SOL-USD"]
+companies = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
-class CryptoData:
+
+class Finance_data:
     def __init__(self, tickers):
         self.tickers = tickers
         self.data = None
@@ -14,7 +17,7 @@ class CryptoData:
         try:
             self.data = yf.download(self.tickers, group_by="ticker")
         except Exception as e:
-            st.error(f"An error occurred while fetching cryptocurrency data: {e}", icon="🚨")
+            st.error(f"An error occurred while fetching market data: {e}", icon="🚨")
             self.data = None
 
     def process_data(self):
@@ -30,24 +33,22 @@ class CryptoData:
                 
             except Exception as e:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
-        
 
 
-def make_chart(crypto_data):
-
-    if crypto_data is None or crypto_data.empty:
-        st.warning("No cryptocurrency data available to display.")
+def make_chart(data, title="Evolution of prices"):
+    if data is None or data.empty:
+        st.warning("No data available to display.")
         return
-
+    
     hover = alt.selection_single(
     fields=["Date"],
     nearest=True,
     on="mouseover",
     empty="none",
     )
-    
+
     lines = (
-        alt.Chart(crypto_data, title="Evolution of Cryptocurrency prices")
+        alt.Chart(data, title=title)
         .mark_line()
         .encode(
             x="Date:T",
@@ -56,15 +57,14 @@ def make_chart(crypto_data):
         )
     )
 
-
     points = lines.transform_filter(hover).mark_circle(size=65)
 
     tooltips = (
-        alt.Chart(crypto_data)
+        alt.Chart(data)
         .mark_rule()
         .encode(
-            x="yearmonthdate(Date)",
-            y="Price",
+            x="Date:T",
+            y="Price:Q",
             opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
             tooltip=[
                 alt.Tooltip("Date", title="Date"),
@@ -75,16 +75,42 @@ def make_chart(crypto_data):
     )
 
     data_layer = (lines + points + tooltips).resolve_scale(y="independent")
-    
     st.altair_chart(data_layer, use_container_width=True)
+
+def what_new():
+    try:
+        response = requests.get(
+            "https://newsapi.org/v2/top-headlines?country=us&apiKey=3a1bc10b310d450da381e508babd0df7"
+        )
+        if response.status_code != 200:
+            st.error(f"News API request failed with status code: {response.status_code}")
+            return
+
+        response = response.json()
+
+    except Exception as e:
+        st.error(f"An error occurred while fetching news data: {e}", icon="🚨")
+        return
+
+    for article in response['articles']:
+        yield st.markdown("## " + article['title'])
+        if article['urlToImage']:
+            yield st.image(image=article['urlToImage'])
+        yield st.write(article['description'])
 
 
 def main():
-    crypto_data = CryptoData(tickers)
+    crypto_data = Finance_data(cryptocoins)
     crypto_data.fetch_data()
     crypto_data = crypto_data.process_data()
+    make_chart(crypto_data, title="Evolution of Cryptocurrency Prices")
 
-    make_chart(crypto_data)
+    company_data = Finance_data(companies)
+    company_data.fetch_data()
+    company_data = company_data.process_data()
+    make_chart(company_data, title="Evolution of Company Prices")
+
+    what_new()
 
 
 if __name__ == "__main__":

@@ -1,14 +1,16 @@
+from newsapi import NewsApiClient
+import streamlit as st
+import requests
 
 
-import pandas as pd
-from vega_datasets import data
+
+response = requests.get('https://newsapi.org/v2/top-headlines?country=us&apiKey=3a1bc10b310d450da381e508babd0df7')
+response = response.json()
 
 
-def get_data():
-    source = data.stocks()
-    source = source[source.date.gt("2004-01-01")]
-    return source
 
-stock_data = get_data()
-
-print(stock_data)
+for article in response['articles']:
+    st.markdown("## " + article['title'])
+    if article['urlToImage']:
+        st.image(image=article['urlToImage'])
+    st.write(article['description'])
