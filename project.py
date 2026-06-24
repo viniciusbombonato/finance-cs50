@@ -6,10 +6,10 @@ import streamlit as st
 import yfinance as yf
 
 cryptocoins = ["ETH-USD", "BNB-USD", "SOL-USD"]
-companies = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
+companies = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
 st.set_page_config(
-    page_title="Finance Dashboard",
+    page_title="Finance Information",
     page_icon="💹",
     layout="wide",
 )
@@ -39,7 +39,6 @@ class Finance_data:
                 
             except Exception as e:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
-
 
 def make_chart(data, title="Evolution of prices"):
     if data is None or data.empty:
@@ -121,6 +120,11 @@ def what_new():
                 if image_url:
                     st.image(image=image_url, width="stretch")
                 st.write(article.get("description", "No description available."))
+
+def page_2():
+    st.title("Dashboard")
+
+pg = st.navigation(["dashboard.py", page_2])
 
 
 def main():
