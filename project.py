@@ -3,23 +3,11 @@ import pandas as pd
 import requests
 import newsapi
 import streamlit as st
+from streamlit_option_menu import option_menu
 import yfinance as yf
 
 cryptocoins = ["ETH-USD", "BNB-USD", "SOL-USD"]
 companies = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META"]
-
-st.set_page_config(
-    page_title="Finance Information",
-    page_icon="💹",
-    layout="wide",
-)
-
-# pages = [
-#     st.Page("dashboard.py", title="Dashboard"),
-#     st.Page("login.py", title="Login"),
-# ]
-pg = st.navigation([st.Page(page="dashboard.py", title="Dashboard")])
-pg.run()
 
 class Finance_data:
     def __init__(self, tickers):
@@ -128,6 +116,18 @@ def what_new():
                     st.image(image=image_url, width="stretch")
                 st.write(article.get("description", "No description available."))
 
+selected = option_menu(
+    menu_title = None,
+    options = ["Home", "Dashboard"],
+    default_index = 0,
+    icons = ["house", "currency-dollar"],
+    orientation = "horizontal",
+)
+
+if selected == "Dashboard":
+    render = st.Page("dashboard.py", title = "Finance Dashboard")
+    pg = st.navigation([render])
+    pg.run()
 
 
 def main():

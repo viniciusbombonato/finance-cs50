@@ -1,6 +1,3 @@
 import streamlit as st
 
-st.Page(
-    title="Finance Dashboard",
-    icon="💹",
-)
+st.write("Finance Dashboard")
