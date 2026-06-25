@@ -14,6 +14,13 @@ st.set_page_config(
     layout="wide",
 )
 
+# pages = [
+#     st.Page("dashboard.py", title="Dashboard"),
+#     st.Page("login.py", title="Login"),
+# ]
+pg = st.navigation([st.Page(page="dashboard.py", title="Dashboard")])
+pg.run()
+
 class Finance_data:
     def __init__(self, tickers):
         self.tickers = tickers
@@ -121,10 +128,6 @@ def what_new():
                     st.image(image=image_url, width="stretch")
                 st.write(article.get("description", "No description available."))
 
-def page_2():
-    st.title("Dashboard")
-
-pg = st.navigation(["dashboard.py", page_2])
 
 
 def main():

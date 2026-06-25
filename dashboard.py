@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.page(
+st.Page(
     title="Finance Dashboard",
     icon="💹",
 )
