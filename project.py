@@ -1,7 +1,6 @@
 import altair as alt
 import pandas as pd
 import requests
-import newsapi
 import streamlit as st
 from streamlit_option_menu import option_menu
 import yfinance as yf
@@ -78,7 +77,6 @@ def make_chart(data, title="Evolution of prices"):
     st.altair_chart(data_layer, use_container_width=True)
 
 def what_new():
-    st.markdown("## Latest News", text_alignment="center")
     try:
         response = requests.get(
             "https://newsapi.org/v2/top-headlines?country=us&apiKey=3a1bc10b310d450da381e508babd0df7"
@@ -90,58 +88,115 @@ def what_new():
         response = response.json()
         articles = response.get("articles", [])
 
+        if not articles:
+            st.info("No news articles available right now.")
+            return
+    
+        return articles
+
     except Exception as e:
         st.error(f"An error occurred while fetching news data: {e}", icon="🚨")
         return
 
-    if not articles:
-        st.info("No news articles available right now.")
-        return
-
-    col1, col2 = st.columns(spec=2, gap="large")
-
-    for index, article in enumerate(articles):
-        if index % 2 == 0:
-            with col1:
-                st.markdown("### " + article.get("title", "Untitled"))
-                image_url = article.get("urlToImage")
-                if image_url:
-                    st.image(image=image_url, width="stretch")
-                st.write(article.get("description", "No description available."))
-        else:
-            with col2:
-                st.markdown("### " + article.get("title", "Untitled"))
-                image_url = article.get("urlToImage")
-                if image_url:
-                    st.image(image=image_url, width="stretch")
-                st.write(article.get("description", "No description available."))
-
-selected = option_menu(
-    menu_title = None,
-    options = ["Home", "Dashboard"],
-    default_index = 0,
-    icons = ["house", "currency-dollar"],
-    orientation = "horizontal",
-)
-
-if selected == "Dashboard":
-    render = st.Page("dashboard.py", title = "Finance Dashboard")
-    pg = st.navigation([render])
-    pg.run()
-
-
+# get infos of the user like:
+# ammount invested in wich active
+def user_investiment():
+    return
+    
 def main():
-    crypto_data = Finance_data(cryptocoins)
-    crypto_data.fetch_data()
-    crypto_data = crypto_data.process_data()
-    make_chart(crypto_data, title="Evolution of Cryptocurrency Prices")
+    selected = option_menu(
+        menu_title = None,
+        options = ["Home", "Dashboard"],
+        default_index = 0,
+        icons = ["house", "currency-dollar"],
+        orientation = "horizontal",
+    )
 
-    company_data = Finance_data(companies)
-    company_data.fetch_data()
-    company_data = company_data.process_data()
-    make_chart(company_data, title="Evolution of Company Prices")
+    if selected == "Home":
+        #getting crypto data for rhen print with make_chart()
+        crypto_data = Finance_data(cryptocoins)
+        crypto_data.fetch_data()
+        crypto_data = crypto_data.process_data()
+        make_chart(crypto_data, title="Evolution of Cryptocurrency Prices")
 
-    what_new()
+        #getting company data for rhen print with make_chart()
+        company_data = Finance_data(companies)
+        company_data.fetch_data()
+        company_data = company_data.process_data()
+        make_chart(company_data, title="Evolution of Company Prices")
+
+
+        ## News ##
+
+        st.markdown("## Latest News", text_alignment="center")
+        
+        # what_new() returns the article from top trandings of newsapi, it contains things like:
+        # title, image, url of the news, description
+        articles = what_new()
+
+        # make 2 columns for print the news side by side
+        col1, col2 = st.columns(spec=2, gap="large")
+
+
+        # it will enumarate wich article with an index, then if this index it`s even the article
+        # goes to the left, if it odd goes to the right
+        for index, article in enumerate(articles):
+            if index % 2 == 0:
+                with col1:
+                    st.markdown("### " + article.get("title", "Untitled"))
+                    image_url = article.get("urlToImage")
+                    if image_url:
+                        st.image(image=image_url, width="stretch")
+                    st.write(article.get("description", "No description available."))
+            else:
+                with col2:
+                    st.markdown("### " + article.get("title", "Untitled"))
+                    image_url = article.get("urlToImage")
+                    if image_url:
+                        st.image(image=image_url, width="stretch")
+                    st.write(article.get("description", "No description available."))
+    
+
+    # if selected the dashboard in the horizontal menu at the top render the dashboard.py file
+    if selected == "Dashboard":
+        render = st.Page("dashboard.py", title="Finance Dashboard")
+        pg = st.navigation([render])
+        pg.run()
+        investiments = st.multiselect(
+            label="Select wich investiments type you currently have",
+            options = [
+                                            "shares",
+                                            "bonds",
+                                            "real estate",
+                                            "mutual funds",
+                                            "exchange traded funds",
+                                            "index funds",
+                                            "real estate investment trusts",
+                                            "high yield savings accounts",
+                                            "certificates of deposit",
+                                            "commodities",
+                                            "cryptocurrencies",
+                                            "peer to peer lending",
+                                            "options",
+                                            "futures contracts",
+                                            "precious metals",
+                                            "collectibles",
+                                            "currencies",
+                                            "annuities",
+                                            "money market funds",
+                                            "venture capital"
+                                        ]
+            )
+        
+        actives = {}
+        for active in investiments:
+            position = st.text_input(
+                label=f"Your position in **{active}**", 
+                placeholder="10000", 
+                icon="💵",
+                )
+
+            actives.add(position)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,3 @@
 import streamlit as st
 
-st.write("Finance Dashboard")
+st.markdown("# Finance Dashboard", text_alignment="center")
