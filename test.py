@@ -1,16 +1,9 @@
-from newsapi import NewsApiClient
-import streamlit as st
-import requests
+from vega_datasets import data
+import pandas as pd
 
+source = data.barley()
 
+df = pd.DataFrame(source)
 
-response = requests.get('https://newsapi.org/v2/top-headlines?country=us&apiKey=3a1bc10b310d450da381e508babd0df7')
-response = response.json()
+print(df)
 
-
-
-for article in response['articles']:
-    st.markdown("## " + article['title'])
-    if article['urlToImage']:
-        st.image(image=article['urlToImage'])
-    st.write(article['description'])

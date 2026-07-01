@@ -101,17 +101,44 @@ def what_new():
 # get infos of the user like:
 # ammount invested in wich active
 def user_investiment(actives):
-    df = pd.DataFrame(
-        data=actives,
-        index=actives.keys(),
-        columns=actives.values(),
-    )
-    st.write(df)
-    st.bar_chart(data=df,
-                 x_label="actives",
-                 y_label="positions",
-                 sort=True,)
+    data = {
+        "Actives": [],
+        "Position": [],
+            }
     
+    for key, value in actives.items():
+        data["Actives"].append(key)
+        data["Position"].append(value)
+
+
+    df = pd.DataFrame(data=data)
+    pd.to_numeric("Position", errors="Could convert to numeric")
+
+    if df.empty:
+        st.warning("Por favor, informe valores numéricos válidos para as posições.")
+        return
+
+    df["Position"] = pd.to_numeric(df["Position"], errors="coerce")
+    df = df.dropna(subset=["Position"])
+    df = df.set_index("Actives")
+
+    if df.empty:
+        st.warning("Por favor, informe valores numéricos válidos para as posições.")
+        return
+
+    st.write(df)
+    st.bar_chart(
+        data=df.reset_index(),
+        x="Actives",
+        y="Position",
+        x_label="Actives",
+        y_label="Positions",
+        stack=False,
+        sort=False,
+        use_container_width=True,
+    )
+
+
 def main():
     selected = option_menu(
         menu_title = None,
