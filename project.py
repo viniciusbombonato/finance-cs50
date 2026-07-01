@@ -100,8 +100,17 @@ def what_new():
 
 # get infos of the user like:
 # ammount invested in wich active
-def user_investiment():
-    return
+def user_investiment(actives):
+    df = pd.DataFrame(
+        data=actives,
+        index=actives.keys(),
+        columns=actives.values(),
+    )
+    st.write(df)
+    st.bar_chart(data=df,
+                 x_label="actives",
+                 y_label="positions",
+                 sort=True,)
     
 def main():
     selected = option_menu(
@@ -165,27 +174,27 @@ def main():
         investiments = st.multiselect(
             label="Select wich investiments type you currently have",
             options = [
-                                            "shares",
-                                            "bonds",
-                                            "real estate",
-                                            "mutual funds",
-                                            "exchange traded funds",
-                                            "index funds",
-                                            "real estate investment trusts",
-                                            "high yield savings accounts",
-                                            "certificates of deposit",
-                                            "commodities",
-                                            "cryptocurrencies",
-                                            "peer to peer lending",
-                                            "options",
-                                            "futures contracts",
-                                            "precious metals",
-                                            "collectibles",
-                                            "currencies",
-                                            "annuities",
-                                            "money market funds",
-                                            "venture capital"
-                                        ]
+                        "shares",
+                        "bonds",
+                        "real estate",
+                        "mutual funds",
+                        "exchange traded funds",
+                        "index funds",
+                        "real estate investment trusts",
+                        "high yield savings accounts",
+                        "certificates of deposit",
+                        "commodities",
+                        "cryptocurrencies",
+                        "peer to peer lending",
+                        "options",
+                        "futures contracts",
+                        "precious metals",
+                        "collectibles",
+                        "currencies",
+                        "annuities",
+                        "money market funds",
+                        "venture capital"
+                    ]
             )
         
         actives = {}
@@ -196,7 +205,17 @@ def main():
                 icon="💵",
                 )
 
-            actives.add(position)
+            actives[f"{active}"] = position
+
+        if actives:
+            if st.button(
+                    label="After fill you positions, click here!", 
+                    help="this button will start making your dashboard",
+                    icon="🔥",
+                    ):
+                user_investiment(actives)
+            
+            
 
 
 if __name__ == "__main__":
