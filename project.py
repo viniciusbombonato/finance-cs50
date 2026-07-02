@@ -112,19 +112,10 @@ def user_investiment(actives):
 
 
     df = pd.DataFrame(data=data)
-    pd.to_numeric("Position", errors="Could convert to numeric")
 
-    if df.empty:
-        st.warning("Por favor, informe valores numéricos válidos para as posições.")
-        return
-
-    df["Position"] = pd.to_numeric(df["Position"], errors="coerce")
-    df = df.dropna(subset=["Position"])
-    df = df.set_index("Actives")
-
-    if df.empty:
-        st.warning("Por favor, informe valores numéricos válidos para as posições.")
-        return
+    # if not df:
+    #     raise(ValueError, "Could not ")
+    df["Position"] = pd.to_numeric(df["Position"])
 
     st.write(df)
     st.bar_chart(
@@ -133,9 +124,8 @@ def user_investiment(actives):
         y="Position",
         x_label="Actives",
         y_label="Positions",
-        stack=False,
-        sort=False,
-        use_container_width=True,
+        sort=True,
+        horizontal=True,
     )
 
 
