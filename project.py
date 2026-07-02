@@ -108,26 +108,27 @@ def user_investiment(actives):
     
     for key, value in actives.items():
         data["Actives"].append(key)
-        data["Position"].append(value)
+        data["Position"].append(float(value))
 
+    return data
 
-    df = pd.DataFrame(data=data)
+def distribution(data):
+    if not data["Actives"] or not data["Position"]:
+            raise(ValueError, "No data to be calculated")
+    
+    amount = 0.0
+    
+    for value in data["Position"]:
+        amount += value
 
-    # if not df:
-    #     raise(ValueError, "Could not ")
-    df["Position"] = pd.to_numeric(df["Position"])
+    porcentage = {}
 
-    st.write(df)
-    st.bar_chart(
-        data=df.reset_index(),
-        x="Actives",
-        y="Position",
-        x_label="Actives",
-        y_label="Positions",
-        sort=True,
-        horizontal=True,
-    )
+    for index, active in enumerate(data["Actives"]):
+        relative_position = (data["Position"][index] / amount) * 100
+        porcentage[active] = f"{relative_position:.2f}%"
 
+    table = pd.Series(porcentage)
+    st.write(table)
 
 def main():
     selected = option_menu(
@@ -230,7 +231,31 @@ def main():
                     help="this button will start making your dashboard",
                     icon="🔥",
                     ):
-                user_investiment(actives)
+                data = user_investiment(actives)
+
+
+        # Generating the chart of dashboard
+        try:
+            if data:
+                df = pd.DataFrame(data=data)
+                
+                df["Position"] = pd.to_numeric(df["Position"])
+
+                st.write(df)
+                st.bar_chart(
+                    data=df.reset_index(),
+                    x="Actives",
+                    y="Position",
+                    x_label="Actives",
+                    y_label="Positions",
+                    sort=True,
+                    horizontal=True,
+                )
+
+                distribution(data)
+        
+        except Exception as e:
+            st.error(f"No data to process yet, press the buttom first: {e}", icon="🚨")
             
             
 
