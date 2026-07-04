@@ -1,9 +1,12 @@
 import altair as alt
+import bcrypt as bc
 import pandas as pd
 import requests
 import streamlit as st
 from streamlit_option_menu import option_menu
+import sqlite3
 import yfinance as yf
+
 
 cryptocoins = ["ETH-USD", "BNB-USD", "SOL-USD"]
 companies = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META"]
@@ -33,6 +36,35 @@ class Finance_data:
                 
             except Exception as e:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
+
+def login(username, password):
+    con = sqlite3.connect("login.db")
+    cur = con.cursor()
+
+    password = password.encode("utf-8")
+
+    hashed = bc.hashpw(password, bc.gensalt())
+
+    res = cur.execute("""
+                SELECT * 
+                FROM users
+                WHERE username = ?
+                        """) (username,)
+    res = cur.fetchone()
+    
+
+    if username == res[0]:
+        if hashed == res[1]:
+            st.session_state["logado"] = True
+            return True
+        else:
+            st.session_state["logado"] = False
+            return False
+
+
+
+
+
 
 def make_chart(data, title="Evolution of prices"):
     if data is None or data.empty:
