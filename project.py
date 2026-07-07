@@ -38,25 +38,48 @@ class Finance_data:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
 
 def register(username, password1, password2):
-    try:
-        con = sqlite3.connect("login.db")
-        cur = con.cursor()
-    except Exception as e:
-        return e
 
     if username and password1 and password2:
+        
+        # check if passwords are the same
         if password1 == password2:
+
+            # try to connect with sata base and check if user already exist
             try:
-                res = cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-                res.fetchone()
+                con = sqlite3.connect("login.db")
+                cur = con.cursor()
+                cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+                res = cur.fetchone()
+
             except Exception as e:
                 return e
             
-            if not res[0]:
-                cur.execute("INSERT INTO users VALUES (?, ?)", (username, password1,))
-                cur.close()
+            # if no user with this username was found, insert new user into table
+            if not res:
+                password1 = password1.encode("utf-8")
+                hashed = bc.hashpw(password1, bc.gensalt())
+                
+                cur.execute("INSERT INTO users VALUES (?, ?)", (username, hashed,))
+                con.commit()
+                con.close()
+                
+                #check if new user was register
                 try:
+                    new_con = sqlite3.connect("login.db")
+                    new_cur = new_con.cursor()
+                    new_cur.execute("SELECT * FROM users WHERE username = ?", (username))
+                    new_res = new_cur.fetchone()
+
+                    if not res:
+                        register(username, password1, password2)
+
+                    else:
+                        return 0
                     
+                    new_con.close()
+                except Exception as e: 
+                    return e
+
                 return 0
             else:
                 return f"User already exists"
@@ -66,33 +89,32 @@ def register(username, password1, password2):
         return f"Insert your username and password"
 
 def login(username, password):
-    con = sqlite3.connect("login.db")
-    cur = con.cursor()
+    
+    # connect with data base
+    try:
+        con = sqlite3.connect("login.db")
+        cur = con.cursor()
+    except Exception as e:
+        return e
 
+    #hash password
     password = password.encode("utf-8")
 
-    hashed = bc.hashpw(password, bc.gensalt())
-
-    res = cur.execute("""
+    cur.execute("""
                 SELECT * 
                 FROM users
                 WHERE username = ?
                         """, (username,))
-    res.fetchone()
+    res = cur.fetchone()
     
-
-    if username == res[0]:
-        if hashed == res[1]:
-            st.session_state["logado"] = True
-            return True
-        else:
-            st.session_state["logado"] = False
-            return False
-
-
-
-
-
+    if res:
+        if username == res[0]:
+            if bc.checkpw(password, res[1]):
+                return 0
+            else:
+                return 2
+    else:
+        return 1
 
 def make_chart(data, title="Evolution of prices"):
     if data is None or data.empty:
@@ -191,131 +213,210 @@ def distribution(data):
     st.write(table)
 
 def main():
-    selected = option_menu(
-        menu_title = None,
-        options = ["Home", "Dashboard"],
-        default_index = 0,
-        icons = ["house", "currency-dollar"],
-        orientation = "horizontal",
-    )
+    if 'logged' not in st.session_state:
+        st.session_state['logged'] = False
+    if "register" not in st.session_state:
+        st.session_state["register"] = True
 
-    if selected == "Home":
-        #getting crypto data for rhen print with make_chart()
-        crypto_data = Finance_data(cryptocoins)
-        crypto_data.fetch_data()
-        crypto_data = crypto_data.process_data()
-        make_chart(crypto_data, title="Evolution of Cryptocurrency Prices")
+    if st.session_state['logged'] == True:
+    
+        selected = option_menu(
+            menu_title = None,
+            options = ["Home", "Dashboard"],
+            default_index = 0,
+            icons = ["house", "currency-dollar"],
+            orientation = "horizontal",
+        )
 
-        #getting company data for rhen print with make_chart()
-        company_data = Finance_data(companies)
-        company_data.fetch_data()
-        company_data = company_data.process_data()
-        make_chart(company_data, title="Evolution of Company Prices")
+        if selected == "Home":
+            #getting crypto data for rhen print with make_chart()
+            crypto_data = Finance_data(cryptocoins)
+            crypto_data.fetch_data()
+            crypto_data = crypto_data.process_data()
+            make_chart(crypto_data, title="Evolution of Cryptocurrency Prices")
 
-
-        ## News ##
-
-        st.markdown("## Latest News", text_alignment="center")
-        
-        # what_new() returns the article from top trandings of newsapi, it contains things like:
-        # title, image, url of the news, description
-        articles = what_new()
-
-        # make 2 columns for print the news side by side
-        col1, col2 = st.columns(spec=2, gap="large")
+            #getting company data for rhen print with make_chart()
+            company_data = Finance_data(companies)
+            company_data.fetch_data()
+            company_data = company_data.process_data()
+            make_chart(company_data, title="Evolution of Company Prices")
 
 
-        # it will enumarate wich article with an index, then if this index it`s even the article
-        # goes to the left, if it odd goes to the right
-        for index, article in enumerate(articles):
-            if index % 2 == 0:
-                with col1:
-                    st.markdown("### " + article.get("title", "Untitled"))
-                    image_url = article.get("urlToImage")
-                    if image_url:
-                        st.image(image=image_url, width="stretch")
-                    st.write(article.get("description", "No description available."))
-            else:
-                with col2:
-                    st.markdown("### " + article.get("title", "Untitled"))
-                    image_url = article.get("urlToImage")
-                    if image_url:
-                        st.image(image=image_url, width="stretch")
-                    st.write(article.get("description", "No description available."))
+            ## News ##
+
+            st.markdown("## Latest News", text_alignment="center")
+            
+            # what_new() returns the article from top trandings of newsapi, it contains things like:
+            # title, image, url of the news, description
+            articles = what_new()
+
+            # make 2 columns for print the news side by side
+            col1, col2 = st.columns(spec=2, gap="large")
+
+
+            # it will enumarate wich article with an index, then if this index it`s even the article
+            # goes to the left, if it odd goes to the right
+            for index, article in enumerate(articles):
+                if index % 2 == 0:
+                    with col1:
+                        st.markdown("### " + article.get("title", "Untitled"))
+                        image_url = article.get("urlToImage")
+                        if image_url:
+                            st.image(image=image_url, width="stretch")
+                        st.write(article.get("description", "No description available."))
+                else:
+                    with col2:
+                        st.markdown("### " + article.get("title", "Untitled"))
+                        image_url = article.get("urlToImage")
+                        if image_url:
+                            st.image(image=image_url, width="stretch")
+                        st.write(article.get("description", "No description available."))
     
 
-    # if selected the dashboard in the horizontal menu at the top render the dashboard.py file
-    if selected == "Dashboard":
-        render = st.Page("dashboard.py", title="Finance Dashboard")
+        # if selected the dashboard in the horizontal menu at the top render the dashboard.py file
+        if selected == "Dashboard":
+            render = st.Page("dashboard.py", title="Finance Dashboard")
+            pg = st.navigation([render])
+            pg.run()
+            investiments = st.multiselect(
+                label="Select wich investiments type you currently have",
+                options = [
+                            "shares",
+                            "bonds",
+                            "real estate",
+                            "mutual funds",
+                            "exchange traded funds",
+                            "index funds",
+                            "real estate investment trusts",
+                            "high yield savings accounts",
+                            "certificates of deposit",
+                            "commodities",
+                            "cryptocurrencies",
+                            "peer to peer lending",
+                            "options",
+                            "futures contracts",
+                            "precious metals",
+                            "collectibles",
+                            "currencies",
+                            "annuities",
+                            "money market funds",
+                            "venture capital"
+                        ]
+                )
+            
+            actives = {}
+            for active in investiments:
+                position = st.text_input(
+                    label=f"Your position in **{active}**", 
+                    placeholder="10000", 
+                    icon="💵",
+                    )
+
+                actives[f"{active}"] = position
+
+            if actives:
+                if st.button(
+                        label="After fill you positions, click here!", 
+                        help="this button will start making your dashboard",
+                        icon="🔥",
+                        ):
+                    data = user_investiment(actives)
+
+
+            # Generating the chart of dashboard
+            try:
+                if data:
+                    df = pd.DataFrame(data=data)
+                    
+                    df["Position"] = pd.to_numeric(df["Position"])
+
+                    st.write(df)
+                    st.bar_chart(
+                        data=df.reset_index(),
+                        x="Actives",
+                        y="Position",
+                        x_label="Actives",
+                        y_label="Positions",
+                        sort=True,
+                        horizontal=True,
+                    )
+
+                    distribution(data)
+            
+            except Exception as e:
+                st.error(f"No data to process yet, press the buttom first: {e}", icon="🚨")
+
+     # if user not logged, send him to login page   
+    if st.session_state['logged'] == False:
+        render = st.Page("login.py", title="Finance Dashboard")
         pg = st.navigation([render])
         pg.run()
-        investiments = st.multiselect(
-            label="Select wich investiments type you currently have",
-            options = [
-                        "shares",
-                        "bonds",
-                        "real estate",
-                        "mutual funds",
-                        "exchange traded funds",
-                        "index funds",
-                        "real estate investment trusts",
-                        "high yield savings accounts",
-                        "certificates of deposit",
-                        "commodities",
-                        "cryptocurrencies",
-                        "peer to peer lending",
-                        "options",
-                        "futures contracts",
-                        "precious metals",
-                        "collectibles",
-                        "currencies",
-                        "annuities",
-                        "money market funds",
-                        "venture capital"
-                    ]
+
+        #forms to log user
+        with st.form("login"):
+            st.markdown("## Log In")
+            username = st.text_input(
+                label = "Username",
+                max_chars = 30,
+                )
+            password = st.text_input(
+                label = "Password",
+                )
+            log_user = st.form_submit_button(
+                label="Log In"
             )
-        
-        actives = {}
-        for active in investiments:
-            position = st.text_input(
-                label=f"Your position in **{active}**", 
-                placeholder="10000", 
-                icon="💵",
+            #set the session as log if all went right
+            if log_user:
+                check_login = login(username, password)
+                if check_login == 0:
+                    st.session_state["logged"] = True
+                elif check_login == 1:
+                    st.session_state["logged"] = False
+                    st.error(f"No user found it", icon="🚨")
+                elif check_login == 2:
+                    st.session_state["logged"] = False
+                    st.error(f"wrong password", icon="🚨")
+
+        # in case the user doesn't have a login
+        st.write("Do not have a login yet?")
+        not_logged = st.button (
+            label="Register"
+        )
+        if not_logged:
+            st.session_state["register"] = True
+            main()
+
+        if st.session_state["register"] == True:
+            render = st.Page("register.py", title="Finance Dashboard")
+            pg = st.navigation([render])
+            pg.run()
+
+            #forms to register the user
+            with st.form("Register"):
+                st.markdown("## Register")
+                username = st.text_input(
+                    label = "Username",
+                    max_chars = 30,
+                    )
+                password1 = st.text_input(
+                    label = "Password",
+                    )
+                password2 = st.text_input(
+                    label = "Repeat your password",
+                    )
+                register_button = st.form_submit_button(
+                    label="Log In"
                 )
 
-            actives[f"{active}"] = position
-
-        if actives:
-            if st.button(
-                    label="After fill you positions, click here!", 
-                    help="this button will start making your dashboard",
-                    icon="🔥",
-                    ):
-                data = user_investiment(actives)
-
-
-        # Generating the chart of dashboard
-        try:
-            if data:
-                df = pd.DataFrame(data=data)
-                
-                df["Position"] = pd.to_numeric(df["Position"])
-
-                st.write(df)
-                st.bar_chart(
-                    data=df.reset_index(),
-                    x="Actives",
-                    y="Position",
-                    x_label="Actives",
-                    y_label="Positions",
-                    sort=True,
-                    horizontal=True,
-                )
-
-                distribution(data)
-        
-        except Exception as e:
-            st.error(f"No data to process yet, press the buttom first: {e}", icon="🚨")
+                #see if user was register correctly
+                if register_button:
+                    register_user = register(username, password1, password2)
+                    if register_user == 0:
+                        st.session_state["logged"] = True
+                        st.session_state["register"] = False
+                        main()
+                    else:
+                        st.write(f"{register_user}")
             
             
 
