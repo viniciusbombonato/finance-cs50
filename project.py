@@ -37,6 +37,34 @@ class Finance_data:
             except Exception as e:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
 
+def register(username, password1, password2):
+    try:
+        con = sqlite3.connect("login.db")
+        cur = con.cursor()
+    except Exception as e:
+        return e
+
+    if username and password1 and password2:
+        if password1 == password2:
+            try:
+                res = cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+                res.fetchone()
+            except Exception as e:
+                return e
+            
+            if not res[0]:
+                cur.execute("INSERT INTO users VALUES (?, ?)", (username, password1,))
+                cur.close()
+                try:
+                    
+                return 0
+            else:
+                return f"User already exists"
+        else:
+            return f"Password not Matches"
+    else:
+        return f"Insert your username and password"
+
 def login(username, password):
     con = sqlite3.connect("login.db")
     cur = con.cursor()
@@ -49,8 +77,8 @@ def login(username, password):
                 SELECT * 
                 FROM users
                 WHERE username = ?
-                        """) (username,)
-    res = cur.fetchone()
+                        """, (username,))
+    res.fetchone()
     
 
     if username == res[0]:
