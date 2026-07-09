@@ -216,7 +216,12 @@ def main():
     if 'logged' not in st.session_state:
         st.session_state['logged'] = False
     if "register" not in st.session_state:
-        st.session_state["register"] = True
+        st.session_state["register"] = False
+    if "register_layout" not in st.session_state:
+        st.session_state["register_layout"] = False
+    if "login_layout" not in st.session_state:
+        st.session_state["login_layout"] = True
+
 
     if st.session_state['logged'] == True:
     
@@ -347,13 +352,13 @@ def main():
                 st.error(f"No data to process yet, press the buttom first: {e}", icon="🚨")
 
      # if user not logged, send him to login page   
-    if st.session_state['logged'] == False:
-        render = st.Page("login.py", title="Finance Dashboard")
+    elif st.session_state['logged'] == False and st.session_state["login_layout"] == True:
+        render = st.Page("login.py", title="Login")
         pg = st.navigation([render])
         pg.run()
 
         #forms to log user
-        with st.form("login"):
+        with st.form("login_forms"):
             st.markdown("## Log In")
             username = st.text_input(
                 label = "Username",
@@ -361,6 +366,7 @@ def main():
                 )
             password = st.text_input(
                 label = "Password",
+                type = "password",
                 )
             log_user = st.form_submit_button(
                 label="Log In"
@@ -370,11 +376,10 @@ def main():
                 check_login = login(username, password)
                 if check_login == 0:
                     st.session_state["logged"] = True
+                    st.session_state["login_layout"] = False 
                 elif check_login == 1:
-                    st.session_state["logged"] = False
                     st.error(f"No user found it", icon="🚨")
                 elif check_login == 2:
-                    st.session_state["logged"] = False
                     st.error(f"wrong password", icon="🚨")
 
         # in case the user doesn't have a login
@@ -383,42 +388,55 @@ def main():
             label="Register"
         )
         if not_logged:
+            st.session_state["register_layout"] = True
             st.session_state["register"] = True
-            main()
+            st.session_state["login_layout"] = False
+            
 
-        if st.session_state["register"] == True:
-            render = st.Page("register.py", title="Finance Dashboard")
-            pg = st.navigation([render])
-            pg.run()
+    elif st.session_state["register"] == True and st.session_state["register_layout"] == True:
+        render = st.Page("register.py", title="Register")
+        pg = st.navigation([render])
+        pg.run()
 
-            #forms to register the user
-            with st.form("Register"):
-                st.markdown("## Register")
-                username = st.text_input(
-                    label = "Username",
-                    max_chars = 30,
-                    )
-                password1 = st.text_input(
-                    label = "Password",
-                    )
-                password2 = st.text_input(
-                    label = "Repeat your password",
-                    )
-                register_button = st.form_submit_button(
-                    label="Log In"
+        #forms to register the user
+        with st.form("register_forms"):
+            st.markdown("## Register")
+            username = st.text_input(
+                label = "Username",
+                max_chars = 30,
                 )
+            password1 = st.text_input(
+                label = "Password",
+                type = "password",
+                )
+            password2 = st.text_input(
+                label = "Repeat your password",
+                type = "password",
+                )
+            register_button = st.form_submit_button(
+                label="Register"
+            )
 
-                #see if user was register correctly
-                if register_button:
-                    register_user = register(username, password1, password2)
-                    if register_user == 0:
-                        st.session_state["logged"] = True
-                        st.session_state["register"] = False
-                        main()
-                    else:
-                        st.write(f"{register_user}")
+            #see if user was register correctly
+            if register_button:
+                register_user = register(username, password1, password2)
+                if register_user == 0:
+                    st.session_state["logged"] = True
+                    st.session_state["register"] = False
+                    st.session_state["register_layout"] = False
+                    st.session_state["login_layout"] = False 
+                
+                else:
+                    st.write(f"{register_user}")
             
-            
+        st.write("Already have an account?")
+        have_account = st.button("Log in")
+
+        if have_account:
+            st.session_state["register"] = False
+            st.session_state["register_layout"] = False
+            st.session_state["login"] = True
+            st.session_state["login_layout"] = True
 
 
 if __name__ == "__main__":
