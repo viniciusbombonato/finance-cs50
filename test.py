@@ -1,5 +1,10 @@
-import sqlite3
+with open("company_tickers.json", "r") as f:
+    f = f.json()
+    companies = []
 
-con = sqlite3.connect("login.db")
-cur = con.cursor()
-cur.execute("CREATE TABLE IF NOT EXISTS users (username, password)")
+    for line in f:
+        data = line.value()
+        companies.append(data["title"])
+    
+    for company in companies:
+        print(company)

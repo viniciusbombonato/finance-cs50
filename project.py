@@ -8,7 +8,7 @@ import sqlite3
 import yfinance as yf
 
 
-cryptocoins = ["ETH-USD", "BNB-USD", "SOL-USD"]
+cryptocoins = ["BTC-USD"]
 companies = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
 class Finance_data:
@@ -46,9 +46,9 @@ def register(username, password1, password2):
 
             # try to connect with sata base and check if user already exist
             try:
-                con = sqlite3.connect("login.db")
+                con = sqlite3.connect("finance.db")
                 cur = con.cursor()
-                cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+                cur.execute("SELECT * FROM users WHERE user_name = ?", (username,))
                 res = cur.fetchone()
 
             except Exception as e:
@@ -59,24 +59,24 @@ def register(username, password1, password2):
                 password1 = password1.encode("utf-8")
                 hashed = bc.hashpw(password1, bc.gensalt())
                 
-                cur.execute("INSERT INTO users VALUES (?, ?)", (username, hashed,))
+                cur.execute("INSERT INTO users (user_name, user_password) VALUES (?, ?);", (username, hashed,))                           
                 con.commit()
                 con.close()
                 
                 #check if new user was register
                 try:
-                    new_con = sqlite3.connect("login.db")
+                    new_con = sqlite3.connect("finance.db")
                     new_cur = new_con.cursor()
-                    new_cur.execute("SELECT * FROM users WHERE username = ?", (username))
+                    new_cur.execute("SELECT * FROM users WHERE user_name = ?", (username,))
                     new_res = new_cur.fetchone()
 
-                    if not res:
+                    if not new_res:
                         register(username, password1, password2)
 
                     else:
+                        new_con.close()
                         return 0
                     
-                    new_con.close()
                 except Exception as e: 
                     return e
 
@@ -92,7 +92,7 @@ def login(username, password):
     
     # connect with data base
     try:
-        con = sqlite3.connect("login.db")
+        con = sqlite3.connect("finance.db")
         cur = con.cursor()
     except Exception as e:
         return e
@@ -103,13 +103,13 @@ def login(username, password):
     cur.execute("""
                 SELECT * 
                 FROM users
-                WHERE username = ?
+                WHERE user_name = ?
                         """, (username,))
     res = cur.fetchone()
     
     if res:
-        if username == res[0]:
-            if bc.checkpw(password, res[1]):
+        if username == res[1]:
+            if bc.checkpw(password, res[2]):
                 return 0
             else:
                 return 2
@@ -180,37 +180,16 @@ def what_new():
         st.error(f"An error occurred while fetching news data: {e}", icon="🚨")
         return
 
-# get infos of the user like:
-# ammount invested in wich active
-def user_investiment(actives):
-    data = {
-        "Actives": [],
-        "Position": [],
-            }
-    
-    for key, value in actives.items():
-        data["Actives"].append(key)
-        data["Position"].append(float(value))
+def yf_companies():
+    with open("company_tickers.json", "r") as f:
+        f = f.json()
+        companies = []
 
-    return data
-
-def distribution(data):
-    if not data["Actives"] or not data["Position"]:
-            raise(ValueError, "No data to be calculated")
-    
-    amount = 0.0
-    
-    for value in data["Position"]:
-        amount += value
-
-    porcentage = {}
-
-    for index, active in enumerate(data["Actives"]):
-        relative_position = (data["Position"][index] / amount) * 100
-        porcentage[active] = f"{relative_position:.2f}%"
-
-    table = pd.Series(porcentage)
-    st.write(table)
+        for line in f:
+            data = line.value()
+            companies.append(data["title"])
+        
+        return companies
 
 def main():
     if 'logged' not in st.session_state:
@@ -283,73 +262,14 @@ def main():
             render = st.Page("dashboard.py", title="Finance Dashboard")
             pg = st.navigation([render])
             pg.run()
-            investiments = st.multiselect(
-                label="Select wich investiments type you currently have",
-                options = [
-                            "shares",
-                            "bonds",
-                            "real estate",
-                            "mutual funds",
-                            "exchange traded funds",
-                            "index funds",
-                            "real estate investment trusts",
-                            "high yield savings accounts",
-                            "certificates of deposit",
-                            "commodities",
-                            "cryptocurrencies",
-                            "peer to peer lending",
-                            "options",
-                            "futures contracts",
-                            "precious metals",
-                            "collectibles",
-                            "currencies",
-                            "annuities",
-                            "money market funds",
-                            "venture capital"
-                        ]
-                )
-            
-            actives = {}
-            for active in investiments:
-                position = st.text_input(
-                    label=f"Your position in **{active}**", 
-                    placeholder="10000", 
-                    icon="💵",
-                    )
 
-                actives[f"{active}"] = position
+            companies = yf_companies()
 
-            if actives:
-                if st.button(
-                        label="After fill you positions, click here!", 
-                        help="this button will start making your dashboard",
-                        icon="🔥",
-                        ):
-                    data = user_investiment(actives)
+            st.multiselect(
+                label="Select your shares",
+                option=companies
+            )
 
-
-            # Generating the chart of dashboard
-            try:
-                if data:
-                    df = pd.DataFrame(data=data)
-                    
-                    df["Position"] = pd.to_numeric(df["Position"])
-
-                    st.write(df)
-                    st.bar_chart(
-                        data=df.reset_index(),
-                        x="Actives",
-                        y="Position",
-                        x_label="Actives",
-                        y_label="Positions",
-                        sort=True,
-                        horizontal=True,
-                    )
-
-                    distribution(data)
-            
-            except Exception as e:
-                st.error(f"No data to process yet, press the buttom first: {e}", icon="🚨")
 
      # if user not logged, send him to login page   
     elif st.session_state['logged'] == False and st.session_state["login_layout"] == True:
