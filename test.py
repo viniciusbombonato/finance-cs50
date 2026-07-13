@@ -1,10 +1,8 @@
-with open("company_tickers.json", "r") as f:
-    f = f.json()
-    companies = []
+import sqlite3
 
-    for line in f:
-        data = line.value()
-        companies.append(data["title"])
-    
-    for company in companies:
-        print(company)
+con = sqlite3.connect("finance.db")
+cur = con.cursor()
+
+cur.execute("ALTER TABLE assets ADD COLUMN asset_date DATE DEFAULT CURRENT_DATE;")
+con.commit()
+con.close()

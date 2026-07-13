@@ -1,5 +1,6 @@
 import altair as alt
 import bcrypt as bc
+import json
 import pandas as pd
 import requests
 import streamlit as st
@@ -36,6 +37,11 @@ class Finance_data:
                 
             except Exception as e:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
+
+class User_companies:
+    def __init__(self, options):
+        self.options = options
+
 
 def register(username, password1, password2):
 
@@ -180,16 +186,28 @@ def what_new():
         st.error(f"An error occurred while fetching news data: {e}", icon="🚨")
         return
 
-def yf_companies():
+def yf_companies_names():
     with open("company_tickers.json", "r") as f:
-        f = f.json()
-        companies = []
+        f = json.load(f)
+        companies_names = []
 
-        for line in f:
-            data = line.value()
-            companies.append(data["title"])
+        for value in f.values():
+            companies_names.append(value["title"])
         
-        return companies
+        return companies_names
+
+
+
+# def store_companies(names, asset_ticker, assest_amount, asset_price):
+#     con = sqlite3("finance.db")
+#     cur = con.cursor()
+
+#     for name in names:
+#         cur.execute("""
+#                     INSERT INTO assests
+#                     (asset_ticker, assest_amount, asset_price)
+#                     VALUES (?, ?, ?)
+#                     """, (asset_ticker, assest_amount, asset_price,))
 
 def main():
     if 'logged' not in st.session_state:
@@ -257,18 +275,33 @@ def main():
                         st.write(article.get("description", "No description available."))
     
 
-        # if selected the dashboard in the horizontal menu at the top render the dashboard.py file
+        # if selected the dashboard in the horizontal menu at the top, render the dashboard.py file
         if selected == "Dashboard":
             render = st.Page("dashboard.py", title="Finance Dashboard")
             pg = st.navigation([render])
             pg.run()
 
-            companies = yf_companies()
+            companies_names = yf_companies_names()
 
-            st.multiselect(
+            options = st.multiselect(
                 label="Select your shares",
-                option=companies
+                options=companies_names,
+                key="user_companies_options",
+                persist_state = "session",
             )
+
+
+            if options:
+                for option in options:
+                    shares_holding = st.number_input(
+                        label=f"how many shares do you have of **{option}** ?",
+                        value=None,
+                        key=f"{option}_key",
+                        persist_state="session",
+                    )
+                    
+                    if shares_holding:
+                        
 
 
      # if user not logged, send him to login page   
