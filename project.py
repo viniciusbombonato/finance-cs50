@@ -41,6 +41,30 @@ class Finance_data:
 class User_companies:
     def __init__(self, options):
         self.options = options
+        self.data = None
+        self.price = None
+        self.ticker = None
+        self.amount = None
+    
+    def fetch_company_tickers(self):
+        try:
+            with open("company_tickers", "r") as f:
+                companies_tickers = []
+                f = json.load(f)
+
+                for value in f.values():
+                    if value["title"] in self.options:
+                        companies_tickers.append(value["ticker"])
+                
+                return companies_tickers
+        except Exception as e:
+            return e
+        
+    def fetch_company_data(self, companies_tickers):
+        try:
+            self.data = yf.download(companies_tickers, period = "1d")
+            
+
 
 
 def register(username, password1, password2):
