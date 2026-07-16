@@ -39,16 +39,22 @@ class Finance_data:
                 st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
 
 class User_companies:
-    def __init__(self, options):
-        self.options = options
+    def __init__(self, options_shares):
+        self._options = []
+        self._shares = []
+        for option, shares in options_shares.items():
+            self._options.append(option)
+            self._shares.append(shares)
+
+
+        self.options = self._options
         self.data = None
-        self.price = None
-        self.ticker = None
-        self.amount = None
-    
+        self.amount = self._shares
+        self.user_assets = {}
+
     def fetch_company_tickers(self):
         try:
-            with open("company_tickers", "r") as f:
+            with open("company_tickers.json", "r") as f:
                 companies_tickers = []
                 f = json.load(f)
 
@@ -63,7 +69,21 @@ class User_companies:
     def fetch_company_data(self, companies_tickers):
         try:
             self.data = yf.download(companies_tickers, period = "1d")
-            
+            self.data = self.data["Close"].iloc[-1]
+            self.data = self.data.to_dict()
+            return self.data
+        except Exception as e:
+            return e
+    
+    def data_to_store(self):
+
+        #for witch ticker that the user own store in a dictionary that info
+        index = 0
+        for ticker, price in self.data.items():
+            self.user_assets[ticker] = {"price": price, "amount": self.amount[index]}
+            index = index + 1
+
+        return self.user_assets
 
 
 
@@ -220,18 +240,28 @@ def yf_companies_names():
         
         return companies_names
 
+def store_companies(user_assets):
+    try:
+        con = sqlite3.connect("finance.db")
+        cur = con.cursor()
 
+        for ticker in user_assets.keys():
+            
+            asset_data = user_assets[ticker]
+            price = asset_data.get("price", 0)
+            amount = asset_data.get("amount", 0)
 
-# def store_companies(names, asset_ticker, assest_amount, asset_price):
-#     con = sqlite3("finance.db")
-#     cur = con.cursor()
-
-#     for name in names:
-#         cur.execute("""
-#                     INSERT INTO assests
-#                     (asset_ticker, assest_amount, asset_price)
-#                     VALUES (?, ?, ?)
-#                     """, (asset_ticker, assest_amount, asset_price,))
+            cur.execute("""
+                    INSERT INTO assests
+                    (asset_ticker, asset_price, asset_amount)
+                    VALUES (?, ?, ?)
+                    """, (ticker, price, amount,))
+                
+        con.commit()
+        con.close()
+        return True
+    except Exception as e:
+        return f"An error occur while trying to store your data: {e}"
 
 def main():
     if 'logged' not in st.session_state:
@@ -308,7 +338,7 @@ def main():
             companies_names = yf_companies_names()
 
             options = st.multiselect(
-                label="Select your shares",
+                label="Select your assets",
                 options=companies_names,
                 key="user_companies_options",
                 persist_state = "session",
@@ -316,15 +346,36 @@ def main():
 
 
             if options:
+                shares_holding = {}
+                all_filled = True
                 for option in options:
-                    shares_holding = st.number_input(
+                    shares_amount = st.number_input(
                         label=f"how many shares do you have of **{option}** ?",
                         value=None,
                         key=f"{option}_key",
                         persist_state="session",
                     )
                     
-                    if shares_holding:
+                    if shares_amount:
+                        shares_holding[option] = shares_amount
+                    else:
+                        all_filled = False
+
+                done = st.button(label="Done")
+
+                if done:
+                    if all_filled and shares_holding:
+                        assets_info = User_companies(shares_holding)
+                        tk = assets_info.fetch_company_tickers()
+                        assets_info.fetch_company_data(tk)
+                        user_assets_dict = assets_info.data_to_store()
+
+                        # after filtering the users assets now it stores into DB
+                        results = store_companies(user_assets_dict)
+                        if results != True:
+                            st.error(results)
+                    else:
+                        st.error("Please fill in the share amounts for all selected options.")
                         
 
 
