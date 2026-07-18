@@ -240,22 +240,81 @@ def yf_companies_names():
         
         return companies_names
 
-def store_companies(user_assets):
+def users_assets_check(user_id, ticker, current_price, current_amount):
     try:
         con = sqlite3.connect("finance.db")
         cur = con.cursor()
 
+        cur.execute("SELECT ? FROM users WHERE user_id = ?", (ticker, user_id,))
+        res = cur.fetchone()
+
+        if res is None:
+            return 0 #user doesn't have this asset
+        else:
+            try:
+                cur.execute("SELECT asset_price, asset_amount FROM assets WHERE asset_ticker = ? AND user_id = ?", (ticker, user_id,))
+                res = cur.fetchone()
+                old_price = res[0]
+                old_amount = res[1]
+
+                amount_purchase = current_amount - old_amount
+                total_price = (old_amount * old_price) + (current_price * amount_purchase)
+                average_price = total_price / current_amount
+
+                try:
+                    cur.execute("DELET FROM assets WHERE user_id = ? AND asset_ticker = ?", (user_id, ticker,))
+                    cur.execute("""
+                                INSERT INTO assets 
+                                (user_id, asset_ticker, asset_price, asset_amount, average_price) 
+                                VALUES (?, ?, ?, ?, ?)""", (user_id, ticker, current_price, current_amount, average_price,))
+                    con.commit()
+                    con.close()
+                    return 1 #successfully insert
+                
+                except Exception as e:
+                    con.close()
+                    return f"An error occured while trying to store your information: {e}"
+            
+            except Exception as e:
+                con.close()
+                return f"An error accured while truing to select your current assets: {e}"
+    
+    except Exception as e:
+        con.close()
+        return f"An error occured while trying to connect with DB: {e}"
+
+
+def store_companies(user_assets, user_for_dash):
+    try:
+        con = sqlite3.connect("finance.db")
+        cur = con.cursor()
+
+        cur.execute("SELECT user_id FROM users WHERE user_name = ?", (user_for_dash,))
+        res = cur.fetchone()
+
+        if res is None:
+            return f"user {user_for_dash} not found in Data Base"
+        user_id = res[0]
+
         for ticker in user_assets.keys():
+            
             
             asset_data = user_assets[ticker]
             price = asset_data.get("price", 0)
             amount = asset_data.get("amount", 0)
-
-            cur.execute("""
-                    INSERT INTO assests
-                    (asset_ticker, asset_price, asset_amount)
-                    VALUES (?, ?, ?)
-                    """, (ticker, price, amount,))
+            
+            #check if ticker is already in assets table
+            check_asset = users_assets_check(user_id, ticker, price, amount)
+            if check_asset == 0:
+                cur.execute("""
+                        INSERT INTO assets
+                        (user_id, asset_ticker, asset_price, asset_amount, average_price)
+                        VALUES (?, ?, ?, ?)
+                        """, (user_id, ticker, price, amount, price,))
+            if check_asset == 1:
+                st.success("Assets successefully insert into DB", icon="✅")
+            else:
+                st.error(check_asset)
                 
         con.commit()
         con.close()
@@ -272,6 +331,9 @@ def main():
         st.session_state["register_layout"] = False
     if "login_layout" not in st.session_state:
         st.session_state["login_layout"] = True
+
+    if "username" not in st.session_state:
+        st.session_state["username"] = None
 
 
     if st.session_state['logged'] == True:
@@ -370,8 +432,11 @@ def main():
                         assets_info.fetch_company_data(tk)
                         user_assets_dict = assets_info.data_to_store()
 
+                        #get user name
+                        user_for_dash = st.session_state["username"]
+
                         # after filtering the users assets now it stores into DB
-                        results = store_companies(user_assets_dict)
+                        results = store_companies(user_assets_dict, user_for_dash)
                         if results != True:
                             st.error(results)
                     else:
@@ -405,6 +470,7 @@ def main():
                 if check_login == 0:
                     st.session_state["logged"] = True
                     st.session_state["login_layout"] = False 
+                    st.session_state["username"] = username
                 elif check_login == 1:
                     st.error(f"No user found it", icon="🚨")
                 elif check_login == 2:
@@ -453,6 +519,7 @@ def main():
                     st.session_state["register"] = False
                     st.session_state["register_layout"] = False
                     st.session_state["login_layout"] = False 
+                    st.session_state["username"] = username
                 
                 else:
                     st.write(f"{register_user}")
