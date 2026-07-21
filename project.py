@@ -245,10 +245,11 @@ def users_assets_check(user_id, ticker, current_price, current_amount):
         con = sqlite3.connect("finance.db")
         cur = con.cursor()
 
-        cur.execute("SELECT ? FROM users WHERE user_id = ?", (ticker, user_id,))
+        cur.execute("SELECT * FROM assets WHERE asset_ticker = ? AND user_id = ?", (ticker, user_id,))
         res = cur.fetchone()
 
         if res is None:
+            st.success(0)
             return 0 #user doesn't have this asset
         else:
             try:
@@ -261,12 +262,22 @@ def users_assets_check(user_id, ticker, current_price, current_amount):
                 total_price = (old_amount * old_price) + (current_price * amount_purchase)
                 average_price = total_price / current_amount
 
+                st.success(average_price)
+
                 try:
-                    cur.execute("DELET FROM assets WHERE user_id = ? AND asset_ticker = ?", (user_id, ticker,))
-                    cur.execute("""
-                                INSERT INTO assets 
-                                (user_id, asset_ticker, asset_price, asset_amount, average_price) 
-                                VALUES (?, ?, ?, ?, ?)""", (user_id, ticker, current_price, current_amount, average_price,))
+                    cur.execute(
+                        "DELETE FROM assets WHERE user_id = ? AND asset_ticker = ?",
+                        (user_id, ticker),
+                    )
+
+                    cur.execute(
+                        """
+                        INSERT INTO assets 
+                        (user_id, asset_ticker, asset_price, asset_amount, average_price) 
+                        VALUES (?, ?, ?, ?, ?)
+                    """,
+                        (user_id, ticker, current_price, current_amount, average_price),
+                    )
                     con.commit()
                     con.close()
                     return 1 #successfully insert
@@ -277,12 +288,11 @@ def users_assets_check(user_id, ticker, current_price, current_amount):
             
             except Exception as e:
                 con.close()
-                return f"An error accured while truing to select your current assets: {e}"
+                return f"An error accured while trying to select your current assets: {e}"
     
     except Exception as e:
         con.close()
         return f"An error occured while trying to connect with DB: {e}"
-
 
 def store_companies(user_assets, user_for_dash):
     try:
@@ -306,12 +316,15 @@ def store_companies(user_assets, user_for_dash):
             #check if ticker is already in assets table
             check_asset = users_assets_check(user_id, ticker, price, amount)
             if check_asset == 0:
-                cur.execute("""
-                        INSERT INTO assets
-                        (user_id, asset_ticker, asset_price, asset_amount, average_price)
-                        VALUES (?, ?, ?, ?)
-                        """, (user_id, ticker, price, amount, price,))
-            if check_asset == 1:
+                try:
+                    cur.execute("""
+                            INSERT INTO assets
+                            (user_id, asset_ticker, asset_price, asset_amount, average_price)
+                            VALUES (?, ?, ?, ?, ?)
+                            """, (user_id, ticker, price, amount, price,))
+                except Exception as e:
+                    st.error(f"An error occured while trying to store your assets: {e}")
+            elif check_asset == 1:
                 st.success("Assets successefully insert into DB", icon="✅")
             else:
                 st.error(check_asset)
@@ -440,7 +453,7 @@ def main():
                         if results != True:
                             st.error(results)
                     else:
-                        st.error("Please fill in the share amounts for all selected options.")
+                        st.error("Please fill the share amounts for all selected options.")
                         
 
 

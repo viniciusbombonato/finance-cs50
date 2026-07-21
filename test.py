@@ -54,6 +54,7 @@ import sqlite3
 con = sqlite3.connect("finance.db")
 cur = con.cursor()
 
-cur.execute("ALTER TABLE assets DROP COLUMN COLLUMN")
-con.commit()
-con.close()
+cur.execute("SELECT * FROM assets WHERE asset_ticker = 'AAPL' AND user_id = 2")
+res = cur.fetchone()
+
+print(res)
