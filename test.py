@@ -1,60 +1,32 @@
-# import json
-# import yfinance as yf
+import json
 
-# class User_companies:
-#     def __init__(self, options_shares):
-#         self._options = []
-#         self._shares = []
-#         for option, shares in options_shares.items():
-#             self._options.append(option)
-#             self._shares.append(shares)
+input_filename = "company_tickers.json"
+output_filename = "name_company.json"
 
+# 1. Carregar o JSON original
+with open(input_filename, "r", encoding="utf-8") as file:
+    data = json.load(file)
 
-#         self.options = self._options
-#         self.data = None
-#         self.amount = self._shares
-#         self.user_assets = {}
-    
-#     def fetch_company_tickers(self):
-#         try:
-#             with open("company_tickers.json", "r") as f:
-#                 companies_tickers = []
-#                 f = json.load(f)
+formatted_data = {}
+seen_titles = set()
+seen_tickers = set()
 
-#                 for value in f.values():
-#                     if value["ticker"] in self.options:
-#                         companies_tickers.append(value["ticker"])
-                
-#                 return companies_tickers
-#         except Exception as e:
-#             return e
-        
-#     def fetch_company_data(self, companies_tickers):
-#         try:
-#             self.data = yf.download(companies_tickers, period = "1d")
-#             self.data = self.data["Close"].iloc[-1]
-#             return self.data.to_dict()
-#         except Exception as e:
-#             return e
-    
-#     def data_to_store(self):
+# 2. Filtrar e remover duplicados de 'title' e 'ticker'
+for item in data.values():
+    title = item.get("title")
+    ticker = item.get("ticker")
 
-#         #for witch ticker that the user own store in a dictionary that info
-#         index = 0
-#         for ticker, price in self.data.items():
-#             self.user_assets[ticker] = {"price": price, "amount": self.amount[index]}
-#             index = index + 1
+    if title and ticker:
+        # Verifica se nem o nome nem o ticker já foram adicionados
+        if title not in seen_titles and ticker not in seen_tickers:
+            formatted_data[title] = ticker
+            seen_titles.add(title)
+            seen_tickers.add(ticker)
 
-#         return self.user_assets
-    
+# 3. Salvar no novo arquivo
+with open(output_filename, "w", encoding="utf-8") as file:
+    json.dump(formatted_data, file, ensure_ascii=False, indent=4)
 
-
-import sqlite3
-
-con = sqlite3.connect("finance.db")
-cur = con.cursor()
-
-cur.execute("SELECT * FROM assets WHERE asset_ticker = 'AAPL' AND user_id = 2")
-res = cur.fetchone()
-
-print(res)
+print(
+    f"Arquivo processado com sucesso! Total de empresas únicas: {len(formatted_data)}"
+)
