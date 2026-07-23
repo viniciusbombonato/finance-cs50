@@ -46,21 +46,18 @@ class User_companies:
             self._options.append(option)
             self._shares.append(shares)
 
-
-        self.options = self._options
         self.data = None
-        self.amount = self._shares
         self.user_assets = {}
 
     def fetch_company_tickers(self):
         try:
-            with open("company_tickers.json", "r") as f:
+            with open("name_ticker.json", "r") as f:
                 companies_tickers = []
                 f = json.load(f)
 
-                for value in f.values():
-                    if value["title"] in self.options:
-                        companies_tickers.append(value["ticker"])
+                for name, ticker in f.items():
+                    if name in self._options:
+                        companies_tickers.append(ticker)
                 
                 return companies_tickers
         except Exception as e:
@@ -80,7 +77,7 @@ class User_companies:
         #for witch ticker that the user own store in a dictionary that info
         index = 0
         for ticker, price in self.data.items():
-            self.user_assets[ticker] = {"price": price, "amount": self.amount[index]}
+            self.user_assets[ticker] = {"price": price, "amount": self._shares[index]}
             index = index + 1
 
         return self.user_assets
@@ -231,109 +228,76 @@ def what_new():
         return
 
 def yf_companies_names():
-    with open("company_tickers.json", "r") as f:
+    with open("name_ticker.json", "r") as f:
         f = json.load(f)
         companies_names = []
 
-        for value in f.values():
-            companies_names.append(value["title"])
+        for key in f.keys():
+            companies_names.append(key)
         
         return companies_names
 
-def users_assets_check(user_id, ticker, current_price, current_amount):
-    try:
-        con = sqlite3.connect("finance.db")
-        cur = con.cursor()
+def users_assets_check(con, user_id, ticker, current_price, current_amount):
+    cur = con.cursor()
 
-        cur.execute("SELECT * FROM assets WHERE asset_ticker = ? AND user_id = ?", (ticker, user_id,))
-        res = cur.fetchone()
+    cur.execute(
+        """
+        SELECT asset_price, asset_amount 
+        FROM assets 
+        WHERE asset_ticker = ? AND user_id = ?
+        """, (ticker, user_id))
+    res = cur.fetchone()
 
-        if res is None:
-            st.success(0)
-            return 0 #user doesn't have this asset
-        else:
-            try:
-                cur.execute("SELECT asset_price, asset_amount FROM assets WHERE asset_ticker = ? AND user_id = ?", (ticker, user_id,))
-                res = cur.fetchone()
-                old_price = res[0]
-                old_amount = res[1]
+    if res is None:
+        return 0 
 
-                amount_purchase = current_amount - old_amount
-                total_price = (old_amount * old_price) + (current_price * amount_purchase)
-                average_price = total_price / current_amount
+    old_price, old_amount = res[0], res[1]
+    amount_purchase = current_amount - old_amount
+    total_price = (old_amount * old_price) + (current_price * amount_purchase)
+    average_price = total_price / current_amount if current_amount > 0 else 0
 
-                st.success(average_price)
-
-                try:
-                    cur.execute(
-                        "DELETE FROM assets WHERE user_id = ? AND asset_ticker = ?",
-                        (user_id, ticker),
-                    )
-
-                    cur.execute(
-                        """
-                        INSERT INTO assets 
-                        (user_id, asset_ticker, asset_price, asset_amount, average_price) 
-                        VALUES (?, ?, ?, ?, ?)
-                    """,
-                        (user_id, ticker, current_price, current_amount, average_price),
-                    )
-                    con.commit()
-                    con.close()
-                    return 1 #successfully insert
-                
-                except Exception as e:
-                    con.close()
-                    return f"An error occured while trying to store your information: {e}"
-            
-            except Exception as e:
-                con.close()
-                return f"An error accured while trying to select your current assets: {e}"
-    
-    except Exception as e:
-        con.close()
-        return f"An error occured while trying to connect with DB: {e}"
+    cur.execute(
+        """
+        UPDATE assets 
+        SET asset_price = ?, asset_amount = ?, average_price = ?
+        WHERE user_id = ? AND asset_ticker = ?
+        """,
+        (current_price, current_amount, average_price, user_id, ticker)
+    )
+    return 1  
 
 def store_companies(user_assets, user_for_dash):
     try:
-        con = sqlite3.connect("finance.db")
-        cur = con.cursor()
+        
+        with sqlite3.connect("finance.db") as con:
+            cur = con.cursor()
 
-        cur.execute("SELECT user_id FROM users WHERE user_name = ?", (user_for_dash,))
-        res = cur.fetchone()
+            cur.execute("SELECT user_id FROM users WHERE user_name = ?", (user_for_dash,))
+            res = cur.fetchone()
 
-        if res is None:
-            return f"user {user_for_dash} not found in Data Base"
-        user_id = res[0]
+            if res is None:
+                return f"User: {user_for_dash} not found."
+            
+            user_id = res[0]
 
-        for ticker in user_assets.keys():
-            
-            
-            asset_data = user_assets[ticker]
-            price = asset_data.get("price", 0)
-            amount = asset_data.get("amount", 0)
-            
-            #check if ticker is already in assets table
-            check_asset = users_assets_check(user_id, ticker, price, amount)
-            if check_asset == 0:
-                try:
+            for ticker, asset_data in user_assets.items():
+                price = asset_data.get("price", 0)
+                amount = asset_data.get("amount", 0)
+
+                check_asset = users_assets_check(con, user_id, ticker, price, amount)
+
+                if check_asset == 0:
                     cur.execute("""
-                            INSERT INTO assets
-                            (user_id, asset_ticker, asset_price, asset_amount, average_price)
-                            VALUES (?, ?, ?, ?, ?)
-                            """, (user_id, ticker, price, amount, price,))
-                except Exception as e:
-                    st.error(f"An error occured while trying to store your assets: {e}")
-            elif check_asset == 1:
-                st.success("Assets successefully insert into DB", icon="✅")
-            else:
-                st.error(check_asset)
-                
-        con.commit()
-        con.close()
-        return True
+                        INSERT INTO assets (user_id, asset_ticker, asset_price, asset_amount, average_price)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (user_id, ticker, price, amount, price))
+            
+            con.commit()
+            st.success("All Done!")
+            return True
+
     except Exception as e:
-        return f"An error occur while trying to store your data: {e}"
+        return f"An error occured: {e}"
 
 def main():
     if 'logged' not in st.session_state:

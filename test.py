@@ -1,32 +1,37 @@
-import json
+import yfinance as yf
+import pandas as pd
+import streamlit as st
 
-input_filename = "company_tickers.json"
-output_filename = "name_company.json"
+companies = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
-# 1. Carregar o JSON original
-with open(input_filename, "r", encoding="utf-8") as file:
-    data = json.load(file)
+class Finance_data:
+    def __init__(self, tickers):
+        self.tickers = tickers
+        self.data = None
 
-formatted_data = {}
-seen_titles = set()
-seen_tickers = set()
+    def fetch_data(self):
+        try:
+            self.data = yf.download(self.tickers, group_by="ticker")
+        except Exception as e:
+            st.error(f"An error occurred while fetching market data: {e}", icon="🚨")
+            self.data = None
 
-# 2. Filtrar e remover duplicados de 'title' e 'ticker'
-for item in data.values():
-    title = item.get("title")
-    ticker = item.get("ticker")
+    def process_data(self):
+        if self.data is not None:
+            try:
+                df_close = self.data.xs("Close", level=1, axis=1)
+                self.data = df_close.melt(var_name="Symbol", value_name="Price", ignore_index=False).reset_index()
+                self.data["Date"] = pd.to_datetime(self.data["Date"])
+                self.data["Price"] = self.data["Price"].round(2)
 
-    if title and ticker:
-        # Verifica se nem o nome nem o ticker já foram adicionados
-        if title not in seen_titles and ticker not in seen_tickers:
-            formatted_data[title] = ticker
-            seen_titles.add(title)
-            seen_tickers.add(ticker)
+                self.data = pd.DataFrame(self.data)
+                return self.data
+                
+            except Exception as e:
+                st.error(f"An error occurred while processing cryptocurrency data: {e}", icon="🚨")
 
-# 3. Salvar no novo arquivo
-with open(output_filename, "w", encoding="utf-8") as file:
-    json.dump(formatted_data, file, ensure_ascii=False, indent=4)
 
-print(
-    f"Arquivo processado com sucesso! Total de empresas únicas: {len(formatted_data)}"
-)
+test = Finance_data(companies)
+test.fetch_data()
+result = test.process_data()
+print(result)
