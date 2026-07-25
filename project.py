@@ -13,13 +13,14 @@ cryptocoins = ["BTC-USD"]
 companies = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
 class Finance_data:
-    def __init__(self, tickers):
+    def __init__(self, tickers, period="1mo"):
         self.tickers = tickers
+        self.period = period
         self.data = None
 
     def fetch_data(self):
         try:
-            self.data = yf.download(self.tickers, group_by="ticker")
+            self.data = yf.download(self.tickers, group_by="ticker", period=self.period)
         except Exception as e:
             st.error(f"An error occurred while fetching market data: {e}", icon="🚨")
             self.data = None
@@ -237,6 +238,19 @@ def yf_companies_names():
         
         return companies_names
 
+def get_user_id(user_for_dash):
+    with sqlite3.connect("finance.db") as con:
+        cur = con.cursor()
+
+        cur.execute("SELECT user_id FROM users WHERE user_name = ?", (user_for_dash,))
+        res = cur.fetchone()
+
+        if res is None:
+            return f"User \`{user_for_dash}\` not found."
+        
+        user_id = res[0]
+        return user_id
+
 def users_assets_check(con, user_id, ticker, current_price, current_amount):
     cur = con.cursor()
 
@@ -259,26 +273,18 @@ def users_assets_check(con, user_id, ticker, current_price, current_amount):
     cur.execute(
         """
         UPDATE assets 
-        SET asset_price = ?, asset_amount = ?, average_price = ?
+        SET asset_price = ?, asset_amount = ?, average_price = ?, asset_date = CURRENT_DATE
         WHERE user_id = ? AND asset_ticker = ?
         """,
         (current_price, current_amount, average_price, user_id, ticker)
     )
     return 1  
 
-def store_companies(user_assets, user_for_dash):
+def store_companies(user_assets, user_id):
     try:
         
         with sqlite3.connect("finance.db") as con:
             cur = con.cursor()
-
-            cur.execute("SELECT user_id FROM users WHERE user_name = ?", (user_for_dash,))
-            res = cur.fetchone()
-
-            if res is None:
-                return f"User: {user_for_dash} not found."
-            
-            user_id = res[0]
 
             for ticker, asset_data in user_assets.items():
                 price = asset_data.get("price", 0)
@@ -298,6 +304,24 @@ def store_companies(user_assets, user_for_dash):
 
     except Exception as e:
         return f"An error occured: {e}"
+
+def get_user_assets(user_id):
+    with sqlite3.connect("finance.db") as con:
+        cur = con.cursor()
+
+        cur.execute("SELECT * FROM assets WHERE user_id = ?", (user_id))
+        res = cur.fetchone()
+        if res:
+            return 0
+        else:
+            return None
+
+def get_buy_date(user_id):
+    with sqlite3.connect("finance.db") as con:
+        cur = con.cursor()
+
+        cur.execute("SELEC")
+        
 
 def main():
     if 'logged' not in st.session_state:
@@ -402,6 +426,10 @@ def main():
 
                 done = st.button(label="Done")
 
+                #get user name and ID
+                user_for_dash = st.session_state["username"]
+                user_id = get_user_id(user_for_dash)
+
                 if done:
                     if all_filled and shares_holding:
                         assets_info = User_companies(shares_holding)
@@ -409,16 +437,21 @@ def main():
                         assets_info.fetch_company_data(tk)
                         user_assets_dict = assets_info.data_to_store()
 
-                        #get user name
-                        user_for_dash = st.session_state["username"]
-
                         # after filtering the users assets now it stores into DB
-                        results = store_companies(user_assets_dict, user_for_dash)
+                        results = store_companies(user_assets_dict, user_id)
                         if results != True:
                             st.error(results)
                     else:
                         st.error("Please fill the share amounts for all selected options.")
-                        
+
+                user_assets_info = get_user_assets(user_id)
+                if user_assets_info == 0:
+                    
+
+                elif user_assets_info == 1:
+                    st.error("user [{user_for_dash}] not found")
+                    
+
 
 
      # if user not logged, send him to login page   
