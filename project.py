@@ -309,18 +309,21 @@ def get_user_assets(user_id):
     with sqlite3.connect("finance.db") as con:
         cur = con.cursor()
 
-        cur.execute("SELECT * FROM assets WHERE user_id = ?", (user_id))
-        res = cur.fetchone()
+        cur.execute("SELECT asset_ticker, average_price FROM assets WHERE user_id = ?", (user_id))
+        res = cur.fetchall()
         if res:
-            return 0
+            return res
         else:
-            return None
+            return 1 #user don't have any asset
 
-def get_buy_date(user_id):
-    with sqlite3.connect("finance.db") as con:
-        cur = con.cursor()
+def get_tickers_for_dash(list_ticker_avPrice):
+    user_tickers = []
 
-        cur.execute("SELEC")
+    for asset in list_ticker_avPrice:
+        user_tickers.append(asset[0])
+    
+    return user_tickers
+
         
 
 def main():
@@ -445,8 +448,15 @@ def main():
                         st.error("Please fill the share amounts for all selected options.")
 
                 user_assets_info = get_user_assets(user_id)
-                if user_assets_info == 0:
-                    
+                if user_assets_info:
+                    user_tickers = get_tickers_for_dash
+
+                    user_data = Finance_data(user_tickers, period="1d")
+                    user_data = user_data.fetch_data()
+
+                    #get the actual price of wich ticker
+                    current_price
+
 
                 elif user_assets_info == 1:
                     st.error("user [{user_for_dash}] not found")
