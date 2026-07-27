@@ -43,9 +43,10 @@ class User_companies:
     def __init__(self, options_shares):
         self._options = []
         self._shares = []
-        for option, shares in options_shares.items():
-            self._options.append(option)
-            self._shares.append(shares)
+        if self._options:
+            for option, shares in options_shares.items():
+                self._options.append(option)
+                self._shares.append(shares)
 
         self.data = None
         self.user_assets = {}
@@ -309,12 +310,26 @@ def get_user_assets(user_id):
     with sqlite3.connect("finance.db") as con:
         cur = con.cursor()
 
-        cur.execute("SELECT asset_ticker, average_price FROM assets WHERE user_id = ?", (user_id))
+        cur.execute("SELECT asset_ticker, average_price FROM assets WHERE user_id = ?", (user_id,))
         res = cur.fetchall()
         if res:
             return res
         else:
             return 1 #user don't have any asset
+
+def make_user_dict(assets_info, tickers_price):
+    user_dict_toDash = {}
+    for ticker, avrPrice in assets_info:
+        for nowTicker, nowPrice in tickers_price.items():
+            if ticker == nowTicker:
+                user_dict_toDash[ticker] = [avrPrice, nowPrice]
+
+    return user_dict_toDash
+
+
+def dict_to_df(dict):
+    dict = pd.DataFrame(dict)
+    return dict
 
 def get_tickers_for_dash(list_ticker_avPrice):
     user_tickers = []
@@ -324,7 +339,13 @@ def get_tickers_for_dash(list_ticker_avPrice):
     
     return user_tickers
 
-        
+def get_price_from_data(data):
+    data =  data["Close"].iloc[-1]
+    data = data.to_dict()
+
+    return data
+
+
 
 def main():
     if 'logged' not in st.session_state:
@@ -407,7 +428,6 @@ def main():
                 label="Select your assets",
                 options=companies_names,
                 key="user_companies_options",
-                persist_state = "session",
             )
 
 
@@ -419,7 +439,6 @@ def main():
                         label=f"how many shares do you have of **{option}** ?",
                         value=None,
                         key=f"{option}_key",
-                        persist_state="session",
                     )
                     
                     if shares_amount:
@@ -447,19 +466,24 @@ def main():
                     else:
                         st.error("Please fill the share amounts for all selected options.")
 
-                user_assets_info = get_user_assets(user_id)
-                if user_assets_info:
-                    user_tickers = get_tickers_for_dash
+            user_assets_info = get_user_assets(user_id)
+            if user_assets_info:
+                user_tickers = get_tickers_for_dash(user_assets_info)
 
-                    user_data = Finance_data(user_tickers, period="1d")
-                    user_data = user_data.fetch_data()
+                user_tickers_price = User_companies(options_shares=[])
+                user_tickers_price = user_tickers_price.fetch_company_data(user_tickers)
 
-                    #get the actual price of wich ticker
-                    current_price
+                if isinstance(user_tickers_price, dict):
+                    dict_to_print = make_user_dict(user_assets_info, user_tickers_price)
+                    st.write(dict_to_df(dict_to_print))
+                    
+                else:
+                    st.error(f"Could not fetch ticker prices: {user_tickers_price}")
 
 
-                elif user_assets_info == 1:
-                    st.error("user [{user_for_dash}] not found")
+
+            elif user_assets_info == 1:
+                st.error("user [{user_for_dash}] not found")
                     
 
 
