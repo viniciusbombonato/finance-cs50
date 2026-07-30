@@ -1,7 +1,7 @@
 altair
 bcrypt
 pandas
-streamlit 1.6
-streamlit-option-menu
 requests
+streamlit
+streamlit-option-menu
 yfinance
