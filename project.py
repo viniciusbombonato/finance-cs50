@@ -41,18 +41,15 @@ class Finance_data:
 
 class User_companies:
     def __init__(self, options_shares):
-        self._options = []
-        self._shares = []
-        if self._options:
-            for option, shares in options_shares.items():
-                self._options.append(option)
-                self._shares.append(shares)
+        self._options = list(options_shares.keys())
+        self._shares = list(options_shares.values())
 
         self.data = None
         self.user_assets = {}
 
     def fetch_company_tickers(self):
         try:
+            companies_tickers = []
             with open("name_ticker.json", "r") as f:
                 companies_tickers = []
                 f = json.load(f)
@@ -61,18 +58,32 @@ class User_companies:
                     if name in self._options:
                         companies_tickers.append(ticker)
                 
-                return companies_tickers
+            return companies_tickers
+            
+        except FileNotFoundError as e:
+            raise FileNotFoundError("The filfe \" name_ticker.json\" was not found") from e
+        except json.JSONDecodeError as e:
+            raise ValueError("Error while trying to decode json file, check the format") from e
+        except (AttributeError, KeyError) as e:
+            raise ValueError("Not a Dictionarie, check the format") from e
         except Exception as e:
-            return e
+            raise ValueError("An error occur") from e
+             
         
     def fetch_company_data(self, companies_tickers):
         try:
             self.data = yf.download(companies_tickers, period = "1d")
             self.data = self.data["Close"].iloc[-1]
             self.data = self.data.to_dict()
+
             return self.data
+        
+        except RuntimeError as e:
+            raise RuntimeError("Error on yfinance API")  from e
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f"Could not fomart the data, check if it is indeed a dictionarie: {e}") from e
         except Exception as e:
-            return e
+            raise ValueError("An error occur") from e
     
     def data_to_store(self):
 
@@ -328,7 +339,8 @@ def make_user_dict(assets_info, tickers_price):
 
 
 def dict_to_df(dict):
-    dict = pd.DataFrame(dict)
+    
+    dict = pd.DataFrame(dict, index=(["Average", "Current"]))
     return dict
 
 def get_tickers_for_dash(list_ticker_avPrice):
@@ -362,6 +374,10 @@ def main():
 
 
     if st.session_state['logged'] == True:
+
+        #get user name and ID
+        user_for_dash = st.session_state["username"]
+        user_id = get_user_id(user_for_dash)
     
         selected = option_menu(
             menu_title = None,
@@ -448,17 +464,19 @@ def main():
 
                 done = st.button(label="Done")
 
-                #get user name and ID
-                user_for_dash = st.session_state["username"]
-                user_id = get_user_id(user_for_dash)
 
                 if done:
                     if all_filled and shares_holding:
-                        assets_info = User_companies(shares_holding)
-                        tk = assets_info.fetch_company_tickers()
-                        assets_info.fetch_company_data(tk)
-                        user_assets_dict = assets_info.data_to_store()
 
+                        assets_info = User_companies(shares_holding)
+
+                        try:
+                            tk = assets_info.fetch_company_tickers()
+                            assets_info.fetch_company_data(tk)
+                            user_assets_dict = assets_info.data_to_store()
+                        except Exception as err:
+                            st.error(err)
+ 
                         # after filtering the users assets now it stores into DB
                         results = store_companies(user_assets_dict, user_id)
                         if results != True:
@@ -470,7 +488,7 @@ def main():
             if user_assets_info:
                 user_tickers = get_tickers_for_dash(user_assets_info)
 
-                user_tickers_price = User_companies(options_shares=[])
+                user_tickers_price = User_companies(options_shares={})
                 user_tickers_price = user_tickers_price.fetch_company_data(user_tickers)
 
                 if isinstance(user_tickers_price, dict):
@@ -479,6 +497,62 @@ def main():
                     
                 else:
                     st.error(f"Could not fetch ticker prices: {user_tickers_price}")
+
+
+                # About the average price and current price for the user's assets
+                with st.container(border=True):
+                    st.subheader("📊 Understanding Your Portfolio Metrics")
+                    st.markdown(
+                        """
+                        Your **Average Price** (cost basis) represents the mean amount you paid per share across all purchases. 
+                        Comparing this to the **Current Market Price** gives you an instant snapshot of your investment's real-time performance.
+                        """
+                    )
+
+                st.divider()
+
+                st.markdown("### 💡 Price Comparison Quick Guide")
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.success("##### 🟢 Below Current Price")
+                    st.metric(
+                        label="Status",
+                        value="In Profit",
+                        delta="Avg < Current",
+                        delta_color="normal",
+                    )
+                    st.caption(
+                        "The market values the stock **higher** than what you paid for it. Your position is currently in the green!"
+                    )
+
+                with col2:
+                    st.info("##### 🔵 Equal to Current Price")
+                    st.metric(
+                        label="Status",
+                        value="Breakeven",
+                        delta="Avg == Current",
+                        delta_color="off",
+                    )
+                    st.caption(
+                        "You have neither gained nor lost value relative to your initial entry point."
+                    )
+
+                with col3:
+                    st.error("##### 🔴 Above Current Price")
+                    st.metric(
+                        label="Status",
+                        value="Unrealized Loss",
+                        delta="- Avg > Current",
+                        delta_color="inverse",
+                    )
+                    st.caption(
+                        "The market is trading **below** your average purchase price. Your position is currently in the red."
+                    )
+
+                
+                st.toast("💡 Remember: Gains or losses remain unrealized until you sell!")
 
 
 
