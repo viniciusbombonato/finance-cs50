@@ -326,7 +326,7 @@ def get_user_assets(user_id):
         if res:
             return res
         else:
-            return 1 #user don't have any asset
+            return None #user don't have any asset
 
 def make_user_dict(assets_info, tickers_price):
     user_dict_toDash = {}
@@ -346,9 +346,10 @@ def dict_to_df(dict):
 def get_tickers_for_dash(list_ticker_avPrice):
     user_tickers = []
 
-    for asset in list_ticker_avPrice:
-        user_tickers.append(asset[0])
-    
+    if list_ticker_avPrice:
+        for asset in list_ticker_avPrice:
+            user_tickers.append(asset[0])
+        
     return user_tickers
 
 def get_price_from_data(data):
@@ -556,8 +557,8 @@ def main():
 
 
 
-            elif user_assets_info == 1:
-                st.error("user [{user_for_dash}] not found")
+            elif user_assets_info == None:
+                st.info(f"**{user_for_dash}** don't have any asset yet")
                     
 
 
