@@ -1,12 +1,12 @@
+import sqlite3
 import bcrypt as bc
 import pytest
 import project
-import sqlite3
 
 
 @pytest.fixture
 def create_db():
-    with sqlite3.connect("finance.db") as con:
+    with sqlite3.connect(":memory:") as con:
         cur = con.cursor()
 
         cur.execute(
@@ -31,21 +31,25 @@ def create_db():
         """)
 
         con.commit()
+        
+        yield con
 
 @pytest.fixture
-def create_user():
+def create_user(create_db):
+    con = create_db
     username = "test"
     password = "secret"
 
     hashed = password.encode("utf-8")
     hashed = bc.hashpw(hashed, bc.gensalt())
 
-    with sqlite3.connect("finance.db") as con:
-        cur = con.cursor()
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO users (user_name, user_password) VALUES (?, ?);",
+        (username, hashed),
+    )
+    con.commit()
 
-        cur.execute("INSERT INTO users (user_name, user_password) VALUES (?, ?);", (username, hashed,))                           
 
-        con.commit()
-
-def test_login_user(create_db, create_user):
+def test_login_user(create_user):
     assert project.login(username="test", password="secret") == 0
