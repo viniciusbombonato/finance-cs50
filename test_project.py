@@ -31,7 +31,7 @@ def create_db():
         """)
 
         con.commit()
-        
+
         yield con
 
 @pytest.fixture
@@ -53,3 +53,8 @@ def create_user(create_db):
 
 def test_login_user(create_user):
     assert project.login(username="test", password="secret") == 0
+    assert project.login(username="test", password="worng") == 2
+    assert project.login(username="not exist", password="secret") == 1
+
+
+def test_register_user():

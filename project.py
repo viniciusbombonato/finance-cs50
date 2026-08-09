@@ -140,7 +140,6 @@ def register(username, password1, password2):
                 except Exception as e: 
                     return e
 
-                return 0
             else:
                 return f"User already exists"
         else:
@@ -170,11 +169,11 @@ def login(username, password):
     if res:
         if username == res[1]:
             if bc.checkpw(password, res[2]):
-                return 0
+                return 0 #login correct
             else:
-                return 2
+                return 2 #wrong password
     else:
-        return 1
+        return 1 #user doesn't exist
 
 def make_chart(data, title="Evolution of prices"):
     if data is None or data.empty:
