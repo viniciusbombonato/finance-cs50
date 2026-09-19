@@ -220,7 +220,7 @@ def make_chart(data, title="Evolution of prices"):
 def what_new():
     try:
         response = requests.get(
-            "https://newsapi.org/v2/top-headlines?country=us&apiKey=3a1bc10b310d450da381e508babd0df7"
+            "https://newsapi.org/v2/top-headlines?category=business&apiKey=3a1bc10b310d450da381e508babd0df7"
         )
         if response.status_code != 200:
             st.error(f"News API request failed with status code: {response.status_code}")
@@ -230,7 +230,7 @@ def what_new():
         articles = response.get("articles", [])
 
         if not articles:
-            st.info("No news articles available right now.")
+            st.info("No articles available right now.")
             return
     
         return articles
@@ -421,8 +421,12 @@ def main():
                         st.markdown("### " + article.get("title", "Untitled"))
                         image_url = article.get("urlToImage")
                         if image_url:
-                            st.image(image=image_url, width="stretch")
-                        st.write(article.get("description", "No description available."))
+                            try:
+                                st.image(image=image_url, width="stretch")
+                            except:
+                                urlToArticle = article.get("url", None)
+                                st.link_button(label="Go to news", url=urlToArticle)
+                            st.write(article.get("description", "No description available."))
                 else:
                     with col2:
                         st.markdown("### " + article.get("title", "Untitled"))
