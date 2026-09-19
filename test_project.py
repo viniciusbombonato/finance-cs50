@@ -1,60 +1,45 @@
-import sqlite3
-import bcrypt as bc
-import pytest
-import project
+from project import dict_to_df, get_tickers_for_dash, make_user_dict
 
 
-@pytest.fixture
-def create_db():
-    with sqlite3.connect(":memory:") as con:
-        cur = con.cursor()
+def test_dict_to_df():
+    data = {"AAPL": [150.0, 155.0], "TSLA": [700.0, 690.0]}
+    result = dict_to_df(data)
 
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_name TEXT NOT NULL UNIQUE,
-                user_password TEXT NOT NULL
-            );
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS assets (
-                asset_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                asset_ticker TEXT NOT NULL,
-                asset_amount REAL NOT NULL,
-                asset_price REAL NOT NULL,
-                asset_date DATE DEFAULT CURRENT_DATE,
-                created_at DATE DEFAULT CURRENT_DATE,
-                FOREIGN KEY(user_id) REFERENCES users(user_id)
-            );
-        """)
+    # index should be exactly "Average" and "Current", in that order
+    assert list(result.index) == ["Average", "Current"]
 
-        con.commit()
+    # columns should match the tickers passed in
+    assert list(result.columns) == ["AAPL", "TSLA"]
 
-        yield con
-
-@pytest.fixture
-def create_user(create_db):
-    con = create_db
-    username = "test"
-    password = "secret"
-
-    hashed = password.encode("utf-8")
-    hashed = bc.hashpw(hashed, bc.gensalt())
-
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO users (user_name, user_password) VALUES (?, ?);",
-        (username, hashed),
-    )
-    con.commit()
+    # values should land in the right row/column
+    assert result["AAPL"]["Average"] == 150.0
+    assert result["AAPL"]["Current"] == 155.0
+    assert result["TSLA"]["Average"] == 700.0
+    assert result["TSLA"]["Current"] == 690.0
 
 
-def test_login_user(create_user):
-    assert project.login(username="test", password="secret") == 0
-    assert project.login(username="test", password="worng") == 2
-    assert project.login(username="not exist", password="secret") == 1
+def test_get_tickers_for_dash():
+    data = [("AAPL", 150.0), ("TSLA", 700.0), ("MSFT", 300.0)]
+    assert get_tickers_for_dash(data) == ["AAPL", "TSLA", "MSFT"]
+
+    # empty input should give an empty list, not crash
+    assert get_tickers_for_dash([]) == []
+
+    # falsy input (e.g. None) should also give an empty list
+    assert get_tickers_for_dash(None) == []
 
 
-def test_register_user():
+def test_make_user_dict():
+    assets_info = [("AAPL", 150.0), ("TSLA", 700.0)]
+    tickers_price = {"AAPL": 155.0, "TSLA": 690.0, "MSFT": 300.0}
+
+    result = make_user_dict(assets_info, tickers_price)
+    assert result == {"AAPL": [150.0, 155.0], "TSLA": [700.0, 690.0]}
+
+    # a ticker the user doesn't hold should be ignored, not included
+    assert "MSFT" not in result
+
+    # a ticker with no matching current price should not appear in the result
+    assets_info_missing = [("GOOGL", 2800.0)]
+    result_missing = make_user_dict(assets_info_missing, tickers_price)
+    assert result_missing == {}

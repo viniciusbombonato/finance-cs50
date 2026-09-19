@@ -257,7 +257,7 @@ def get_user_id(user_for_dash):
         res = cur.fetchone()
 
         if res is None:
-            return f"User \`{user_for_dash}\` not found."
+            return f"User `{user_for_dash}` not found."
         
         user_id = res[0]
         return user_id
