@@ -358,6 +358,24 @@ def get_price_from_data(data):
     return data
 
 
+def check_image(image_url):
+    if not image_url:
+        return False
+
+    try:
+        # using head() method because it returns only the status code, and no content
+        # and the headers are needed beacuse newsapi sometimes block head() methods,
+        # with the User-Agent is more thrustworthy, even it's not 100%.
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.head(image_url, headers=headers, timeout=3)
+        if res.status_code == 200:
+            return True
+        
+    except:
+        return True
+
+
+
 
 def main():
     if 'logged' not in st.session_state:
@@ -420,19 +438,25 @@ def main():
                     with col1:
                         st.markdown("### " + article.get("title", "Untitled"))
                         image_url = article.get("urlToImage")
-                        if image_url:
-                            try:
-                                st.image(image=image_url, width="stretch")
-                            except:
-                                urlToArticle = article.get("url", None)
-                                st.link_button(label="Go to news", url=urlToArticle)
-                            st.write(article.get("description", "No description available."))
+
+                        if image_url and check_image(image_url):
+                            st.image(image=image_url, width="stretch")
+
+                        else:
+                            st.image("Finance-app.jpeg")
+                            
+                        st.write(article.get("description", "No description available."))
                 else:
                     with col2:
                         st.markdown("### " + article.get("title", "Untitled"))
                         image_url = article.get("urlToImage")
-                        if image_url:
+
+                        if image_url and check_image(image_url):
                             st.image(image=image_url, width="stretch")
+
+                        else:
+                            st.image("Finance-app.jpeg")
+
                         st.write(article.get("description", "No description available."))
     
 
