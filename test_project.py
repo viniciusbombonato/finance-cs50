@@ -11,7 +11,6 @@ def test_dict_to_df():
     # columns should match the tickers passed in
     assert list(result.columns) == ["AAPL", "TSLA"]
 
-    # values should land in the right row/column
     assert result["AAPL"]["Average"] == 150.0
     assert result["AAPL"]["Current"] == 155.0
     assert result["TSLA"]["Average"] == 700.0
@@ -22,10 +21,9 @@ def test_get_tickers_for_dash():
     data = [("AAPL", 150.0), ("TSLA", 700.0), ("MSFT", 300.0)]
     assert get_tickers_for_dash(data) == ["AAPL", "TSLA", "MSFT"]
 
-    # empty input should give an empty list, not crash
+    # test empty data. It should return a list with nothing in it
     assert get_tickers_for_dash([]) == []
 
-    # falsy input (e.g. None) should also give an empty list
     assert get_tickers_for_dash(None) == []
 
 

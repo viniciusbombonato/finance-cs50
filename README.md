@@ -1,5 +1,5 @@
 # Finance Dashboard
-#### Video Demo: <URL HERE>
+#### Video Demo: https://youtu.be/qpdqNwPuOLA
 #### Description:
 
 Finance Dashboard is a multipage web application, built with [Streamlit](https://streamlit.io), that lets a user create an account, log in, build a personal portfolio of stocks, and track how that portfolio is performing against live market data. Alongside the portfolio tracker, the app also shows recent price history for a small set of well-known companies and a cryptocurrency, and pulls in current business headlines through a news API. My goal was to combine several things I learned in CS50 — file handling, exception handling, classes, working with an external API, and persisting data to a database — into a single project I would actually want to use myself, since I already track a small personal portfolio by hand in a spreadsheet.
